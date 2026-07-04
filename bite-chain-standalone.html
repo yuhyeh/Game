@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Bite-Chain</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#12151A" />
+<style>
+  :root {
+    --bg: #12151A;
+    --panel: #1C2128;
+    --panel2: #161A1F;
+    --line: #2A313A;
+    --text: #EDEAE2;
+    --dim: #8A9099;
+    --dim2: #4A525C;
+    --gold: #F2C14E;
+    --mouse: #D8D2C2;
+    --snake: #79C24A;
+    --cat: #E2984B;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, Roboto, sans-serif; overflow: hidden; }
+  .mono { font-family: 'SF Mono', 'Courier New', monospace; }
+  #app { height: 100vh; height: 100dvh; width: 100%; max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Tabs */
+  #tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--line); }
+  #tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; background: transparent; color: var(--dim); border: none; border-bottom: 2px solid transparent; }
+  #tabs button.active { color: var(--gold); border-color: var(--gold); background: var(--panel); }
+
+  /* Panels */
+  .panel { flex: 1; overflow-y: auto; display: none; }
+  .panel.active { display: flex; flex-direction: column; }
+
+  /* Rules */
+  #rulesPanel.active { display: block; padding: 18px 16px; }
+  .rule-box { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 14px; margin-bottom: 14px; }
+  .rule-box h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); margin: 0 0 8px; }
+  .rule-box p, .rule-box li { color: #B9BEC5; line-height: 1.5; font-size: 14px; }
+  .rule-box ol { margin: 0; padding-left: 18px; }
+
+  /* Game tab layout */
+  #gamePanel.active { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  #dashboardBox { height: 50%; flex-shrink: 0; overflow-y: auto; padding: 14px 16px 10px; }
+  #divider { height: 4px; flex-shrink: 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  #contentBox { height: 50%; overflow-y: auto; padding: 14px 16px; }
+  .defined-box { border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); padding: 12px; }
+  .box-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim2); margin-bottom: 6px; font-family: monospace; }
+
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+  .title-row h1 { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.02em; margin: 0; }
+  .title-row h1 span { color: var(--snake); }
+  .title-row p { font-size: 11px; color: var(--dim); margin: 4px 0 0; }
+
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .status-tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--panel); }
+  .status-tile .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
+  .status-tile .val { font-size: 12px; }
+
+  .btn-row { display: flex; width: 100%; gap: 8px; margin-bottom: 12px; }
+  .btn-row button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 4px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--line); background: var(--panel); color: var(--dim); white-space: nowrap; }
+  .btn-row button:disabled { opacity: 0.35; }
+  #btnStart.ready { border-color: var(--gold); color: var(--bg); background: var(--gold); }
+  #btnDraw.ready { border-color: var(--snake); color: var(--snake); background: var(--panel); }
+  #btnPlay.ready { border-color: var(--cat); color: var(--cat); background: var(--panel); }
+  #btnBattle.ready { border: 2px solid var(--gold); color: var(--bg); background: var(--gold); font-weight: 800; box-shadow: 0 0 12px 1px rgba(242,193,78,0.5); animation: pulse 1.1s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .score-tile { text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 6px 2px; background: var(--panel); }
+  .score-tile .face { font-size: 15px; }
+  .score-tile .name { font-size: 9px; color: var(--dim); font-family: monospace; }
+  .score-tile .val { font-size: 17px; font-weight: 800; font-family: monospace; }
+  .score-tile.top .val { color: var(--gold); }
+
+  .hint { font-size: 11px; color: var(--dim); margin-bottom: 10px; font-family: monospace; display: flex; align-items: center; gap: 6px; }
+
+  /* Hands */
+  .hands-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .hand-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--panel); }
+  .hand-box.human { border-color: rgba(242,193,78,0.35); }
+  .hand-box.winner { box-shadow: 0 0 0 1.5px var(--gold) inset; }
+  .hand-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .hand-head .who { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: flex; align-items: center; gap: 6px; }
+  .hand-head .count { font-size: 10px; color: var(--dim); font-family: monospace; }
+  .hand-cards { display: flex; gap: 6px; flex-wrap: wrap; min-height: 56px; align-items: center; }
+  .hand-cards .empty { font-size: 10px; color: var(--dim2); font-family: monospace; }
+
+  .card { border-radius: 6px; border: 2px solid; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card.sm { width: 40px; height: 56px; font-size: 20px; }
+  .card.lg { width: 80px; height: 112px; font-size: 36px; }
+  .card.faded { opacity: 0.3; }
+  .card.selected { box-shadow: 0 0 0 2px var(--gold); border-color: var(--gold) !important; }
+  .card.clickable { cursor: pointer; }
+  .cardback { width: 40px; height: 56px; border-radius: 6px; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; color: #4A525C; flex-shrink: 0; background: repeating-linear-gradient(135deg, #1C2128, #1C2128 4px, #20262d 4px, #20262d 8px); }
+
+  /* Played row */
+  #playedBox { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--panel); margin-bottom: 14px; }
+  #playedBox .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 10px; font-family: monospace; }
+  .played-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .played-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .played-slot .pname { font-size: 9px; color: var(--dim); font-family: monospace; }
+
+  #gameOverBox { display: none; border: 2px solid var(--dim); border-radius: 10px; padding: 20px; margin-bottom: 14px; text-align: center; background: var(--panel); }
+  #gameOverBox.win { border-color: var(--gold); }
+  #gameOverBox .tag { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; font-family: monospace; }
+  #gameOverBox .msg { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  #gameOverBox .finals { font-size: 11px; color: var(--dim); font-family: monospace; margin-bottom: 14px; }
+  #gameOverBox button { background: var(--gold); color: var(--bg); border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.04em; }
+
+  /* Log */
+  #logPanel.active { display: flex; padding: 14px 16px; }
+  #logBox { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); width: 100%; }
+  #logBox .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); padding: 12px 16px 8px; border-bottom: 1px solid var(--line); font-family: monospace; }
+  #logList { padding: 10px 16px; font-size: 12px; font-family: monospace; color: #B9BEC5; }
+  #logList div { padding: 3px 0; }
+  #logList .none { color: var(--dim2); }
+
+  svg.ring { width: 68px; height: 56px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="tabs">
+    <button id="tabRules" class="active">📖 Rules</button>
+    <button id="tabGame">🎮 Game</button>
+    <button id="tabLog">📜 Log</button>
+  </div>
+
+  <!-- RULES -->
+  <div id="rulesPanel" class="panel active">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <svg class="ring" viewBox="0 0 120 104"></svg>
+      <p class="mono" style="font-size:11px; color:var(--dim); margin:0;">🐭 Mouse eats 🐍 Snake · 🐍 Snake eats 🐱 Cat · 🐱 Cat eats 🐭 Mouse</p>
+    </div>
+    <div class="rule-box">
+      <h2>Setup</h2>
+      <p>60-card deck: 20 Mouse, 20 Cat, 20 Snake. 4 players — you (🦝) and three bots (🦊 🦉 🐺). Each player is dealt 3 cards to start. You only see your own hand; the bots' hands stay face-down.</p>
+    </div>
+    <div class="rule-box">
+      <h2>Turn sequence</h2>
+      <ol>
+        <li><b style="color:var(--snake)">Draw</b> — each player draws one card, clockwise starting with you.</li>
+        <li><b style="color:var(--cat)">Play</b> — tap a card in your hand to select it, then press Play. Bots pick automatically. All 4 cards reveal at once.</li>
+        <li><b style="color:var(--gold)">Battle</b> — the round's winner(s) are worked out and scored.</li>
+      </ol>
+      <p>Repeat Draw → Play → Battle. Once the deck can't fill a full round, drawing stops automatically and you keep playing straight from your hands until every player's hand is empty.</p>
+    </div>
+    <div class="rule-box">
+      <h2>Winning a round</h2>
+      <ol>
+        <li>The animal played the <b>fewest</b> times that round wins.</li>
+        <li>If two animals tie for fewest, the <b>predator</b> of the two wins (e.g. Snake beats Cat if both are tied).</li>
+        <li>If all 4 players play the <b>same</b> animal, there's no winner — the result carries forward and is decided by whichever animal/predator wins the next round. That round's winner(s) collect points for both rounds.</li>
+      </ol>
+    </div>
+    <div class="rule-box">
+      <h2>End of game</h2>
+      <p>The game ends when every player's hand is completely empty. Highest score wins. If you're tied for the top score you'll see <b style="color:var(--gold)">"You are awesome!"</b> — otherwise, <b>"Better try next time."</b> Restart anytime from the Game tab.</p>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="gamePanel" class="panel">
+    <div id="dashboardBox">
+      <div class="defined-box">
+        <div class="box-label">Top box — Dashboard</div>
+        <div class="title-row">
+          <div>
+            <h1>Bite<span>-</span>Chain</h1>
+            <p>mouse eats snake · snake eats cat · cat eats mouse</p>
+          </div>
+          <svg class="ring" viewBox="0 0 120 104" id="ringGame"></svg>
+        </div>
+        <div class="status-grid mono">
+          <div class="status-tile">
+            <div class="label">Deck remaining</div>
+            <div class="val" id="deckVal"></div>
+          </div>
+          <div class="status-tile">
+            <div class="label">Round</div>
+            <div class="val" id="roundVal">—</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button id="btnStart">🔀 Start</button>
+          <button id="btnDraw" disabled>📥 Draw</button>
+          <button id="btnPlay" disabled>⚔️ Play</button>
+          <button id="btnBattle" disabled>🔨 Battle</button>
+        </div>
+        <div class="hint" id="playHint" style="display:none;"></div>
+        <div class="score-grid" id="scoreGrid" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div id="divider"></div>
+
+    <div id="contentBox">
+      <div class="defined-box" style="min-height:100%;">
+        <div class="box-label">Bottom box — Play area</div>
+        <div id="idleMsg" style="font-size:13px; color:var(--dim); border:1px dashed var(--line); border-radius:8px; padding:24px; text-align:center;">
+          Press <b style="color:var(--text)">Start</b> to shuffle the deck and deal 3 cards to each of 4 players. You play as <b style="color:var(--text)">🦝 You</b>; you'll only ever see your own hand. The game runs until every hand is empty.
+        </div>
+        <div id="handsGrid" class="hands-grid" style="display:none;"></div>
+        <div id="playedBox" style="display:none;">
+          <div class="lbl" id="playedLbl">Waiting for play</div>
+          <div class="played-grid" id="playedGrid"></div>
+        </div>
+        <div id="gameOverBox">
+          <div class="tag">All hands empty — game over</div>
+          <div class="msg" id="gameOverMsg"></div>
+          <div class="finals" id="gameOverFinals"></div>
+          <button id="btnPlayAgain">🔀 Play again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div id="logPanel" class="panel">
+    <div id="logBox">
+      <div class="lbl">Round log</div>
+      <div id="logList"><div class="none">No rounds played yet — start a game from the Game tab.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- constants ----------
+  var ANIMALS = {
+    M: { name: "Mouse", emoji: "🐭", accent: "#D8D2C2", eats: "S" },
+    S: { name: "Snake", emoji: "🐍", accent: "#79C24A", eats: "C" },
+    C: { name: "Cat",   emoji: "🐱", accent: "#E2984B", eats: "M" }
+  };
+  var PLAYER_NAMES = ["You", "Player 2", "Player 3", "Player 4"];
+  var AVATARS = ["🦝", "🦊", "🦉", "🐺"];
+  var HUMAN = 0;
+  var HAND_SIZE_START = 3;
+  var PHASE = { IDLE:"idle", READY_DRAW:"ready_draw", READY_PLAY:"ready_play", READY_DECIDE:"ready_decide", GAME_OVER:"game_over" };
+
+  // ---------- state ----------
+  var state = {
+    deck: [], hands: [[],[],[],[]], scores: [0,0,0,0],
+    phase: PHASE.IDLE, round: 0, played: [null,null,null,null],
+    selectedIdx: null, pendingRounds: 0, pendingSummaries: [],
+    lastResult: null, log: []
+  };
+
+  // ---------- helpers ----------
+  function shuffle(arr){ var a=arr.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function freshDeck(){ var d=[]; Object.keys(ANIMALS).forEach(function(k){ for(var i=0;i<20;i++) d.push(k); }); return shuffle(d); }
+  function predatorWins(a,b){ return ANIMALS[a].eats===b ? a : b; }
+  function tally(arr){ var c={M:0,C:0,S:0}; arr.forEach(function(x){ if(x) c[x]++; }); return c; }
+
+  function decideRound(playedArr){
+    var counts = tally(playedArr);
+    var present = Object.keys(counts).filter(function(k){ return counts[k]>0; });
+    if(present.length===1) return { type:"allSame", animal: present[0] };
+    var minCount = Math.min.apply(null, present.map(function(k){ return counts[k]; }));
+    var candidates = present.filter(function(k){ return counts[k]===minCount; });
+    var winnerAnimal, reason;
+    if(candidates.length===1){ winnerAnimal = candidates[0]; reason = "fewest"; }
+    else {
+      winnerAnimal = predatorWins(candidates[0], candidates[1]);
+      var loser = candidates[0]===winnerAnimal ? candidates[1] : candidates[0];
+      reason = "predator:"+winnerAnimal+":"+loser;
+    }
+    var winners = [];
+    playedArr.forEach(function(c,i){ if(c===winnerAnimal) winners.push(i); });
+    return { type:"decisive", winnerAnimal:winnerAnimal, winners:winners, reason:reason };
+  }
+
+  function pushLog(line){ state.log.push(line); }
+
+  // ---------- predation ring (SVG) ----------
+  function ringSVG(){
+    var pts = { M:{x:60,y:12}, C:{x:106,y:92}, S:{x:14,y:92} };
+    function arc(from,to){
+      var mx=(pts[from].x+pts[to].x)/2, my=(pts[from].y+pts[to].y)/2;
+      var cx=mx+(60-mx)*0.6, cy=my+(65-my)*0.6;
+      return '<path d="M '+pts[from].x+' '+pts[from].y+' Q '+cx+' '+cy+' '+pts[to].x+' '+pts[to].y+'" stroke="'+ANIMALS[from].accent+'" stroke-width="1.6" fill="none" marker-end="url(#arrow-'+from+')" opacity="0.85" />';
+    }
+    var defs = '<defs>' + Object.keys(ANIMALS).map(function(k){
+      return '<marker id="arrow-'+k+'" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="'+ANIMALS[k].accent+'"/></marker>';
+    }).join('') + '</defs>';
+    var nodes = Object.keys(pts).map(function(k){
+      var p = pts[k];
+      return '<circle cx="'+p.x+'" cy="'+p.y+'" r="13" fill="#12151A" stroke="'+ANIMALS[k].accent+'" stroke-width="1.5"/><text x="'+p.x+'" y="'+(p.y+5)+'" text-anchor="middle" font-size="12">'+ANIMALS[k].emoji+'</text>';
+    }).join('');
+    return defs + arc("M","S") + arc("S","C") + arc("C","M") + nodes;
+  }
+
+  // ---------- DOM refs ----------
+  var el = {
+    tabRules: document.getElementById('tabRules'),
+    tabGame: document.getElementById('tabGame'),
+    tabLog: document.getElementById('tabLog'),
+    rulesPanel: document.getElementById('rulesPanel'),
+    gamePanel: document.getElementById('gamePanel'),
+    logPanel: document.getElementById('logPanel'),
+    deckVal: document.getElementById('deckVal'),
+    roundVal: document.getElementById('roundVal'),
+    btnStart: document.getElementById('btnStart'),
+    btnDraw: document.getElementById('btnDraw'),
+    btnPlay: document.getElementById('btnPlay'),
+    btnBattle: document.getElementById('btnBattle'),
+    playHint: document.getElementById('playHint'),
+    scoreGrid: document.getElementById('scoreGrid'),
+    idleMsg: document.getElementById('idleMsg'),
+    handsGrid: document.getElementById('handsGrid'),
+    playedBox: document.getElementById('playedBox'),
+    playedLbl: document.getElementById('playedLbl'),
+    playedGrid: document.getElementById('playedGrid'),
+    gameOverBox: document.getElementById('gameOverBox'),
+    gameOverMsg: document.getElementById('gameOverMsg'),
+    gameOverFinals: document.getElementById('gameOverFinals'),
+    btnPlayAgain: document.getElementById('btnPlayAgain'),
+    logList: document.getElementById('logList')
+  };
+
+  document.querySelectorAll('svg.ring').forEach(function(s){ s.innerHTML = ringSVG(); });
+
+  // ---------- tabs ----------
+  function setTab(name){
+    [el.rulesPanel, el.gamePanel, el.logPanel].forEach(function(p){ p.classList.remove('active'); });
+    [el.tabRules, el.tabGame, el.tabLog].forEach(function(b){ b.classList.remove('active'); });
+    if(name==='rules'){ el.rulesPanel.classList.add('active'); el.tabRules.classList.add('active'); }
+    if(name==='game'){ el.gamePanel.classList.add('active'); el.tabGame.classList.add('active'); }
+    if(name==='log'){ el.logPanel.classList.add('active'); el.tabLog.classList.add('active'); renderLog(); }
+  }
+  el.tabRules.onclick = function(){ setTab('rules'); };
+  el.tabGame.onclick = function(){ setTab('game'); };
+  el.tabLog.onclick = function(){ setTab('log'); };
+
+  // ---------- game actions ----------
+  function startGame(){
+    var d = freshDeck();
+    var hands = [[],[],[],[]];
+    for(var r=0;r<HAND_SIZE_START;r++){ for(var p=0;p<4;p++){ hands[p].push(d.pop()); } }
+    state.deck = d; state.hands = hands; state.scores = [0,0,0,0];
+    state.phase = PHASE.READY_DRAW; state.round = 1;
+    state.played = [null,null,null,null]; state.selectedIdx = null;
+    state.pendingRounds = 0; state.pendingSummaries = []; state.lastResult = null;
+    state.log = [
+      "Game started. Deck shuffled: 20 Mouse / 20 Cat / 20 Snake (60 total).",
+      "Dealt "+HAND_SIZE_START+" cards to each of 4 players. You can only see your own hand. Deck remaining: "+d.length+"."
+    ];
+    maybeSkipDraw();
+    render();
+  }
+
+  function maybeSkipDraw(){
+    if(state.phase===PHASE.READY_DRAW && state.deck.length<4 && state.hands.some(function(h){return h.length>0;})){
+      pushLog("Deck exhausted ("+state.deck.length+" left) — skipping draw, playing down remaining hands.");
+      state.phase = PHASE.READY_PLAY;
+    }
+  }
+
+  function drawStep(){
+    if(state.deck.length<4) return;
+    var d = state.deck.slice();
+    var hands = state.hands.map(function(h){ return h.slice(); });
+    var drawn = [];
+    for(var p=0;p<4;p++){ var c = d.pop(); hands[p].push(c); drawn.push(c); }
+    state.deck = d; state.hands = hands; state.phase = PHASE.READY_PLAY; state.selectedIdx = null;
+    pushLog("Round "+state.round+" — Draw: you drew "+ANIMALS[drawn[HUMAN]].emoji+" "+ANIMALS[drawn[HUMAN]].name+". Other players drew 1 card each too. Deck remaining: "+d.length+".");
+    render();
+  }
+
+  function confirmPlay(){
+    if(state.selectedIdx===null) return;
+    var hands = state.hands.map(function(h){ return h.slice(); });
+    var playedThisTurn = [null,null,null,null];
+    var humanCard = hands[HUMAN].splice(state.selectedIdx,1)[0];
+    playedThisTurn[HUMAN] = humanCard;
+    for(var p=1;p<4;p++){
+      var idx = Math.floor(Math.random()*hands[p].length);
+      var card = hands[p].splice(idx,1)[0];
+      playedThisTurn[p] = card;
+    }
+    state.hands = hands; state.played = playedThisTurn; state.selectedIdx = null; state.phase = PHASE.READY_DECIDE;
+    pushLog("Round "+state.round+" — Play (revealed simultaneously): "+playedThisTurn.map(function(c,i){ return PLAYER_NAMES[i]+"="+ANIMALS[c].emoji+ANIMALS[c].name; }).join(", ")+".");
+    render();
+  }
+
+  function decideStep(){
+    var result = decideRound(state.played);
+    if(result.type==="allSame"){
+      state.pendingRounds++; state.pendingSummaries.push(state.round);
+      state.lastResult = { type:"allSame", animal: result.animal, round: state.round };
+      pushLog("Round "+state.round+" — Decide: all four played "+ANIMALS[result.animal].emoji+" "+ANIMALS[result.animal].name+". No winner — carries forward to the next round.");
+    } else {
+      var pointsEach = state.pendingRounds + 1;
+      var newScores = state.scores.slice();
+      result.winners.forEach(function(i){ newScores[i] += pointsEach; });
+      state.scores = newScores;
+      var winnerNames = result.winners.map(function(i){ return AVATARS[i]+" "+PLAYER_NAMES[i]; }).join(" & ");
+      var reasonText;
+      if(result.reason==="fewest"){ reasonText = ANIMALS[result.winnerAnimal].name+" was played least often"; }
+      else { var parts = result.reason.split(":"); reasonText = "tie for fewest — "+ANIMALS[parts[1]].name+" eats "+ANIMALS[parts[2]].name; }
+      var carryNote = state.pendingRounds>0 ? " This also resolves pending round(s) "+state.pendingSummaries.join(", ")+" — same winner(s) take those too." : "";
+      pushLog("Round "+state.round+" — Decide: "+reasonText+". "+winnerNames+" win"+(result.winners.length>1?"":"s")+" +"+pointsEach+" each."+carryNote);
+      state.lastResult = { type:"decisive", winnerAnimal: result.winnerAnimal, winners: result.winners, pointsEach: pointsEach, round: state.round, resolvedPending: state.pendingSummaries.slice() };
+      state.pendingRounds = 0; state.pendingSummaries = [];
+    }
+    state.played = [null,null,null,null];
+    state.round++;
+
+    var allEmpty = state.hands.every(function(h){ return h.length===0; });
+    if(allEmpty){
+      state.phase = PHASE.GAME_OVER;
+      pushLog("All hands are empty — game over." + ((state.pendingRounds>0 || result.type==="allSame") ? " Note: a pending tied round remains unresolved." : ""));
+    } else {
+      state.phase = PHASE.READY_DRAW;
+      maybeSkipDraw();
+    }
+    render();
+  }
+
+  el.btnStart.onclick = startGame;
+  el.btnDraw.onclick = drawStep;
+  el.btnPlay.onclick = confirmPlay;
+  el.btnBattle.onclick = decideStep;
+  el.btnPlayAgain.onclick = startGame;
+
+  // ---------- render ----------
+  function render(){
+    var deckCounts = tally(state.deck);
+    el.deckVal.innerHTML = '<span style="color:'+ANIMALS.M.accent+'">M '+deckCounts.M+'</span> &nbsp; <span style="color:'+ANIMALS.C.accent+'">C '+deckCounts.C+'</span> &nbsp; <span style="color:'+ANIMALS.S.accent+'">S '+deckCounts.S+'</span> &nbsp; <span style="color:var(--dim)">= '+state.deck.length+'</span>';
+    el.roundVal.textContent = state.phase===PHASE.IDLE ? "—" : (state.phase===PHASE.GAME_OVER ? (state.round-1)+" (final)" : state.round);
+
+    var canStart = state.phase===PHASE.IDLE || state.phase===PHASE.GAME_OVER;
+    var canDraw = state.phase===PHASE.READY_DRAW && state.deck.length>=4;
+    var canConfirmPlay = state.phase===PHASE.READY_PLAY && state.selectedIdx!==null;
+    var canDecide = state.phase===PHASE.READY_DECIDE;
+
+    el.btnStart.textContent = (state.phase===PHASE.IDLE ? "🔀 Start" : "🔀 Restart");
+    el.btnStart.classList.toggle('ready', canStart);
+    el.btnDraw.disabled = !canDraw; el.btnDraw.classList.toggle('ready', canDraw);
+    el.btnPlay.disabled = !canConfirmPlay; el.btnPlay.classList.toggle('ready', canConfirmPlay);
+    el.btnBattle.disabled = !canDecide; el.btnBattle.classList.toggle('ready', canDecide);
+
+    if(state.phase===PHASE.READY_PLAY){
+      el.playHint.style.display = 'flex';
+      el.playHint.textContent = state.selectedIdx===null ? "✋ Tap a card in your hand below, then press Play." : "✋ Card selected — press Play to reveal.";
+    } else { el.playHint.style.display = 'none'; }
+
+    var maxScore = Math.max.apply(null, state.scores.concat([0]));
+    if(state.phase!==PHASE.IDLE){
+      el.scoreGrid.style.display = 'grid';
+      el.scoreGrid.innerHTML = state.scores.map(function(s,p){
+        return '<div class="score-tile'+(s===maxScore && maxScore>0 ? ' top':'')+'"><div class="face">'+AVATARS[p]+'</div><div class="name">'+PLAYER_NAMES[p]+'</div><div class="val">'+s+'</div></div>';
+      }).join('');
+    } else { el.scoreGrid.style.display = 'none'; }
+
+    // bottom box
+    if(state.phase===PHASE.IDLE){
+      el.idleMsg.style.display = 'block';
+      el.handsGrid.style.display = 'none';
+      el.playedBox.style.display = 'none';
+      el.gameOverBox.style.display = 'none';
+    } else {
+      el.idleMsg.style.display = 'none';
+      el.handsGrid.style.display = 'grid';
+      el.playedBox.style.display = 'block';
+
+      el.handsGrid.innerHTML = state.hands.map(function(hand,p){
+        var isWinner = state.lastResult && state.lastResult.winners && state.lastResult.winners.indexOf(p)!==-1;
+        var cardsHTML;
+        if(hand.length===0){ cardsHTML = '<span class="empty">empty</span>'; }
+        else if(p===HUMAN){
+          cardsHTML = hand.map(function(c,i){
+            var a = ANIMALS[c];
+            var sel = state.selectedIdx===i;
+            var clickable = state.phase===PHASE.READY_PLAY;
+            return '<div class="card sm'+(sel?' selected':'')+(clickable?' clickable':'')+'" data-idx="'+i+'" style="border-color:'+(sel?'#F2C14E':a.accent)+'; background:linear-gradient(160deg,'+a.accent+'22,#1c2128);">'+a.emoji+'</div>';
+          }).join('');
+        } else {
+          cardsHTML = hand.map(function(){ return '<div class="cardback">?</div>'; }).join('');
+        }
+        return '<div class="hand-box'+(p===HUMAN?' human':'')+(isWinner?' winner':'')+'">'+
+          '<div class="hand-head"><span class="who"><span style="font-size:16px;">'+AVATARS[p]+'</span>'+PLAYER_NAMES[p]+'</span><span class="count">'+hand.length+' card'+(hand.length!==1?'s':'')+'</span></div>'+
+          '<div class="hand-cards" data-player="'+p+'">'+cardsHTML+'</div>'+
+        '</div>';
+      }).join('');
+
+      // attach click handlers for human's cards
+      if(state.phase===PHASE.READY_PLAY){
+        var humanCardsEl = el.handsGrid.querySelector('.hand-cards[data-player="0"]');
+        if(humanCardsEl){
+          humanCardsEl.querySelectorAll('.card').forEach(function(cardEl){
+            cardEl.addEventListener('click', function(){
+              state.selectedIdx = parseInt(cardEl.getAttribute('data-idx'), 10);
+              render();
+            });
+          });
+        }
+      }
+
+      el.playedLbl.textContent = canDecide ? "Revealed this round" : "Waiting for play";
+      el.playedGrid.innerHTML = state.played.map(function(c,p){
+        var inner;
+        if(c){ var a = ANIMALS[c]; inner = '<div class="card lg" style="border-color:'+a.accent+'; background:linear-gradient(160deg,'+a.accent+'22,#1c2128);">'+a.emoji+'</div>'; }
+        else { inner = '<div class="card lg faded" style="border-color:'+ANIMALS.M.accent+'; background:linear-gradient(160deg,'+ANIMALS.M.accent+'22,#1c2128);">'+ANIMALS.M.emoji+'</div>'; }
+        return '<div class="played-slot">'+inner+'<span class="pname">'+AVATARS[p]+' '+PLAYER_NAMES[p]+'</span></div>';
+      }).join('');
+
+      if(state.phase===PHASE.GAME_OVER){
+        var humanWins = state.scores[HUMAN]===maxScore;
+        el.gameOverBox.style.display = 'block';
+        el.gameOverBox.classList.toggle('win', humanWins);
+        el.gameOverMsg.textContent = humanWins ? "You are awesome!" : "Better try next time.";
+        el.gameOverMsg.style.color = humanWins ? "#F2C14E" : "#EDEAE2";
+        el.gameOverFinals.innerHTML = "Final scores — "+AVATARS[0]+" You: "+state.scores[0]+" · "+AVATARS[1]+" P2: "+state.scores[1]+" · "+AVATARS[2]+" P3: "+state.scores[2]+" · "+AVATARS[3]+" P4: "+state.scores[3];
+      } else {
+        el.gameOverBox.style.display = 'none';
+      }
+    }
+
+    if(el.logPanel.classList.contains('active')) renderLog();
+  }
+
+  function renderLog(){
+    if(state.log.length===0){ el.logList.innerHTML = '<div class="none">No rounds played yet — start a game from the Game tab.</div>'; return; }
+    var rev = state.log.slice().reverse();
+    el.logList.innerHTML = rev.map(function(line){ return '<div>'+line+'</div>'; }).join('');
+  }
+
+  render();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
