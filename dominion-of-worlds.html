@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dominion of Worlds</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+:root{
+  --void:#0a0b10;
+  --panel:#12141c;
+  --panel-2:#181b26;
+  --hairline:#2a2c38;
+  --gold:#c9a24b;
+  --gold-bright:#f0cf80;
+  --parchment:#ece4cf;
+  --dim:#8b8878;
+  --p1:#5b9bd9;
+  --p1-glow:#5b9bd980;
+  --p2:#c25a4d;
+  --p2-glow:#c25a4d80;
+  --p3:#8f6bd0;
+  --p3-glow:#8f6bd080;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:radial-gradient(ellipse at 50% -10%, #1a1d2c 0%, var(--void) 55%);
+  color:var(--parchment);
+  font-family:'IBM Plex Sans', sans-serif;
+  min-height:100vh;
+  padding:24px 16px 60px;
+}
+.wrap{max-width:1180px;margin:0 auto;}
+
+h1,h2,h3{font-family:'Cinzel', serif; letter-spacing:0.02em; margin:0;}
+.eyebrow{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+
+.header{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  border-bottom:1px solid var(--hairline);
+  padding-bottom:16px; margin-bottom:18px;
+  flex-wrap:wrap; gap:12px;
+}
+.header h1{font-size:28px; color:var(--gold-bright); font-weight:900;}
+.header .sub{color:var(--dim); font-size:13px; margin-top:4px;}
+
+.tab-bar{
+  display:flex; gap:6px; margin-bottom:22px; border-bottom:1px solid var(--hairline);
+}
+.tab-btn{
+  font-family:'Cinzel',serif; font-size:14px; font-weight:700; letter-spacing:0.03em;
+  background:transparent; border:none; color:var(--dim);
+  padding:10px 18px; cursor:pointer; border-bottom:2px solid transparent;
+  transition:color .15s, border-color .15s;
+}
+.tab-btn:hover{color:var(--parchment);}
+.tab-btn.active{color:var(--gold-bright); border-bottom-color:var(--gold);}
+
+.hud{
+  display:flex; gap:14px; flex-wrap:wrap; margin-bottom:22px;
+}
+.hud-card{
+  flex:1; min-width:230px;
+  background:var(--panel);
+  border:1px solid var(--hairline);
+  border-radius:6px;
+  padding:14px 16px;
+  position:relative;
+  overflow:hidden;
+}
+.hud-card.active{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset, 0 0 18px -6px var(--gold);}
+.hud-card .who{display:flex; align-items:center; gap:8px; font-family:'Cinzel',serif; font-size:15px; font-weight:700;}
+.dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+.dot.p1{background:var(--p1); box-shadow:0 0 8px var(--p1-glow);}
+.dot.p2{background:var(--p2); box-shadow:0 0 8px var(--p2-glow);}
+.dot.p3{background:var(--p3); box-shadow:0 0 8px var(--p3-glow);}
+.hud-card .res{
+  font-family:'IBM Plex Mono', monospace; font-size:22px; margin-top:6px; color:var(--gold-bright);
+}
+.hud-card .res span{font-size:12px; color:var(--dim); font-family:'IBM Plex Sans',sans-serif; margin-left:6px;}
+.hud-card .sub-stats{display:flex; gap:14px; margin-top:4px; flex-wrap:wrap;}
+.hud-card .sub-stats .item{font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--parchment);}
+.hud-card .sub-stats .item span{font-size:11px; color:var(--dim); font-family:'IBM Plex Sans',sans-serif; margin-left:4px;}
+.hud-card .corp-line{font-size:10.5px; color:var(--dim); margin-top:6px; font-family:'IBM Plex Mono',monospace;}
+.hud-card .corp-line b{color:var(--gold-bright);}
+.hud-turn{
+  min-width:160px; text-align:center;
+  background:var(--panel-2);
+  border:1px solid var(--hairline);
+  border-radius:6px; padding:14px;
+}
+.hud-turn .round{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--dim); letter-spacing:0.12em;}
+.hud-turn .actions{font-family:'Cinzel',serif; font-size:20px; color:var(--gold-bright); margin-top:4px;}
+
+.planets{
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:26px;
+}
+@media(max-width:760px){.planets{grid-template-columns:1fr;}}
+
+.planet-card{
+  background:var(--panel);
+  border:1px solid var(--hairline);
+  border-radius:8px;
+  padding:18px;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  position:relative;
+  transition:border-color .3s;
+}
+.planet-card.owned-1{border-color:var(--p1);}
+.planet-card.owned-2{border-color:var(--p2);}
+.planet-card.owned-3{border-color:var(--p3);}
+.planet-card.status-neutral{border-color:var(--gold); animation:pulse 2.2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,162,75,0.35);} 50%{box-shadow:0 0 16px 2px rgba(201,162,75,0.35);}}
+
+.size-tag{
+  font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.15em;
+  color:var(--dim); text-transform:uppercase; margin-bottom:10px;
+}
+.orb{
+  border-radius:50%;
+  margin-bottom:12px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.06);
+}
+.orb canvas{width:100%; height:100%; display:block;}
+.orb-s{width:64px; height:64px;}
+.orb-m{width:96px; height:96px;}
+.orb-l{width:140px; height:140px;}
+.orb.status-owned-1{box-shadow:0 0 26px -4px var(--p1-glow), 0 0 0 1px rgba(255,255,255,0.06);}
+.orb.status-owned-2{box-shadow:0 0 26px -4px var(--p2-glow), 0 0 0 1px rgba(255,255,255,0.06);}
+.orb.status-owned-3{box-shadow:0 0 26px -4px var(--p3-glow), 0 0 0 1px rgba(255,255,255,0.06);}
+.orb.status-neutral{box-shadow:0 0 26px -4px rgba(201,162,75,0.6), 0 0 0 1px rgba(255,255,255,0.06);}
+
+.planet-name{font-family:'Cinzel',serif; font-size:18px; font-weight:700; color:var(--gold-bright);}
+.planet-status{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+  margin-top:2px; margin-bottom:10px;
+}
+.planet-status.new{color:var(--dim);}
+.planet-status.owned-1{color:var(--p1);}
+.planet-status.owned-2{color:var(--p2);}
+.planet-status.owned-3{color:var(--p3);}
+.planet-status.neutral{color:var(--gold);}
+
+.stat-row{
+  display:flex; justify-content:space-between; width:100%;
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--dim);
+  margin-bottom:3px;
+}
+.stat-row b{color:var(--parchment); font-weight:600;}
+
+.progress-wrap{width:100%; margin-top:10px;}
+.progress-label{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--dim); display:flex; justify-content:space-between; margin-bottom:4px;}
+.progress-bar{height:6px; background:#20222c; border-radius:3px; overflow:hidden; border:1px solid var(--hairline); margin-bottom:6px;}
+.progress-fill{height:100%; border-radius:3px; transition:width .35s ease;}
+.progress-fill.p1{background:var(--p1);}
+.progress-fill.p2{background:var(--p2);}
+.progress-fill.p3{background:var(--p3);}
+.progress-fill.gold{background:var(--gold);}
+
+.crown{position:absolute; top:10px; right:12px; font-size:16px;}
+
+.actions-panel{
+  background:var(--panel-2); border:1px solid var(--hairline); border-radius:8px;
+  padding:18px 20px; margin-bottom:20px;
+}
+.actions-panel h2{font-size:16px; color:var(--gold-bright); margin-bottom:4px;}
+.actions-panel .hint{color:var(--dim); font-size:12px; margin-bottom:14px;}
+.controls-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+select, button{
+  font-family:'IBM Plex Sans',sans-serif; font-size:13px;
+  background:var(--panel); color:var(--parchment);
+  border:1px solid var(--hairline); border-radius:5px; padding:9px 12px;
+}
+select{min-width:150px;}
+button.role-btn{
+  cursor:pointer; font-weight:600; letter-spacing:0.02em;
+  border:1px solid var(--gold); color:var(--gold-bright); background:transparent;
+  transition:all .15s;
+}
+button.role-btn:hover:not(:disabled){background:var(--gold); color:#1a1408;}
+button.role-btn:disabled{opacity:0.35; cursor:not-allowed; border-color:var(--hairline); color:var(--dim);}
+button.end-turn{
+  cursor:pointer; font-weight:700; background:var(--gold); color:#1a1408; border:none;
+  padding:10px 18px; font-family:'Cinzel',serif; letter-spacing:0.03em;
+}
+button.end-turn:hover{background:var(--gold-bright);}
+button.end-turn:disabled{opacity:0.4; cursor:not-allowed;}
+button.restart{
+  cursor:pointer; background:transparent; border:1px solid var(--p2); color:var(--p2); font-size:12px; padding:7px 12px;
+}
+
+.log-panel{
+  background:var(--panel); border:1px solid var(--hairline); border-radius:8px; padding:16px 20px;
+  max-height:460px; overflow-y:auto;
+}
+.log-panel h2{font-size:14px; color:var(--dim); margin-bottom:10px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.1em;}
+.log-entry{font-size:12.5px; color:var(--parchment); padding:5px 0; border-bottom:1px dashed var(--hairline); font-family:'IBM Plex Mono',monospace;}
+.log-entry:last-child{border-bottom:none;}
+.log-entry .tag{color:var(--gold); margin-right:6px;}
+
+.winner-banner{
+  text-align:center; padding:40px 20px; background:var(--panel-2); border:1px solid var(--gold);
+  border-radius:8px; margin-bottom:20px;
+}
+.winner-banner h2{font-size:28px; color:var(--gold-bright); margin-bottom:8px;}
+.winner-banner p{color:var(--dim); margin-bottom:16px;}
+
+.rules-box{
+  background:var(--panel); border:1px solid var(--hairline); border-radius:8px; padding:20px 22px;
+  margin-bottom:20px; font-size:13px; color:var(--dim); line-height:1.75;
+}
+.rules-box b{color:var(--parchment);}
+.rules-box h3{color:var(--gold-bright); font-size:14px; margin-bottom:8px; margin-top:18px;}
+.rules-box h3:first-child{margin-top:0;}
+.rules-box .rule-block{margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const SIZE_META = {
+  S: {proportion:1, orbClass:'orb-s'},
+  M: {proportion:2, orbClass:'orb-m'},
+  L: {proportion:4, orbClass:'orb-l'},
+};
+const SIZE_POOL = ['S','M','L'];
+
+const PLAYER_IDS = [1,2,3];
+const PLAYER_COLOR = {1:'p1', 2:'p2', 3:'p3'};
+const PLAYER_CROWN = {1:'\u2654', 2:'\u265B', 3:'\u265A'};
+
+const DEFENSE_MAX = 5;
+const FLEET_MAX = 10;
+const DEFENSE_COST = 3;
+const FLEET_COST = 5;
+const STARFLEET_FLEET_COST = 10;
+const CORPORATION_COST = 100;
+
+function randomSize(){ return SIZE_POOL[Math.floor(Math.random()*SIZE_POOL.length)]; }
+
+const RACES = [
+  {key:'human',      name:'Human Dominion',        bonus:'+1 resource every turn'},
+  {key:'dragonatic', name:'Dragonatic Ascendancy',  bonus:'+1 fleet on every fleet build'},
+  {key:'mercurial',  name:'Mercurial Concord',      bonus:'+1 defense on every defense build'},
+  {key:'illuminati', name:'Illuminati Order',       bonus:'+1 ambassador on every ambassador sent'},
+  {key:'empirical',  name:'Empirical Hegemony',     bonus:'+1 governor on every governor sent'},
+];
+
+function raceMeta(key){ return RACES.find(r=>r.key===key) || RACES[0]; }
+
+function pickNDistinctRaces(n){
+  const pool = [...RACES];
+  const picked = [];
+  for(let i=0;i<n;i++){
+    const idx = Math.floor(Math.random()*pool.length);
+    picked.push(pool.splice(idx,1)[0]);
+  }
+  return picked;
+}
+
+function randomRace(){ return RACES[Math.floor(Math.random()*RACES.length)]; }
+
+function raceBonusCount(player, raceKey){
+  let count = 0;
+  if(player.race === raceKey) count++;
+  if(player.corporationRace === raceKey) count++;
+  return count;
+}
+
+function emptyCountMap(){ return {1:0, 2:0, 3:0}; }
+
+function makePlanet(id, name, size){
+  const p = SIZE_META[size].proportion;
+  return {
+    id, name, size, proportion:p,
+    explorersReq: p,
+    ambassadorsReq: p+1,
+    governorsReq: p+1,
+    resourceYield: p,
+    status:'New',
+    owner:null,
+    explorers: emptyCountMap(),
+    ambassadors: emptyCountMap(),
+    governors: emptyCountMap(),
+    defense:0,
+    seed: Math.floor(Math.random()*1e9),
+  };
+}
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function freshState(){
+  const races = shuffle(pickNDistinctRaces(3)); // shuffled again so race identity is fully decoupled from player slot/role
+  const turnOrder = shuffle([1,2,3]);
+  const players = {
+    1:{name:'You',         isBot:false, resources:5, fleet:0, starFleet:0, race:races[0].key, corporationRace:null},
+    2:{name:'Nemesis Bot', isBot:true,  resources:5, fleet:0, starFleet:0, race:races[1].key, corporationRace:null},
+    3:{name:'Specter Bot', isBot:true,  resources:5, fleet:0, starFleet:0, race:races[2].key, corporationRace:null},
+  };
+  const raceLines = PLAYER_IDS.map(id=>{
+    const rm = raceMeta(players[id].race);
+    return `${players[id].name} is the ${rm.name} (${rm.bonus})`;
+  }).join('. ');
+  return {
+    planets:[
+      makePlanet('emb','Emberos', randomSize()),
+      makePlanet('the','Thessaly', randomSize()),
+      makePlanet('dra','Draconis Majoris', randomSize()),
+    ],
+    players,
+    turnOrder,
+    turnIndex:0,
+    currentPlayer: turnOrder[0],
+    actionsLeft:3,
+    round:1,
+    log:[
+      {tag:'START', text:'Three powers eye three unclaimed, randomly-sized worlds. No two bots ever coordinate \u2014 each acts purely in its own interest.'},
+      {tag:'RACE', text: raceLines + '. Race assignment is fully random and independent of who is human or bot \u2014 the human player is just as likely to draw any of the 5 races as either bot.'},
+      {tag:'TURN ORDER', text: `Turn order this game: ${turnOrder.map(id=>players[id].name).join(' \u2192 ')}.`},
+    ],
+    winner:null,
+    activeTab:'game',
+  };
+}
+
+function clone(state){ return JSON.parse(JSON.stringify(state)); }
+
+function rivalsOf(playerId){ return PLAYER_IDS.filter(id=>id!==playerId); }
+
+function applyAction(state, playerId, role, planetId){
+  const s = clone(state);
+  const player = s.players[playerId];
+  if(!player) return {state, ok:false, message:'Invalid player.'};
+  const planet = s.planets.find(pl=>pl.id===planetId);
+
+  let ok = false, message = '';
+
+  if(role==='explorer'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(player.resources < 1){ message = `${player.name} lacks resources to hire an explorer.`; }
+    else if(planet.status !== 'New'){ message = `${planet.name} is not open for colonization.`; }
+    else{
+      player.resources -= 1;
+      planet.explorers[playerId] += 1;
+      ok = true;
+      message = `${player.name} deploys an explorer to ${planet.name} (${planet.explorers[playerId]}/${planet.explorersReq}).`;
+      if(planet.explorers[playerId] >= planet.explorersReq){
+        planet.status = 'Colonized';
+        planet.owner = playerId;
+        planet.explorers = emptyCountMap();
+        planet.ambassadors = emptyCountMap();
+        planet.governors = emptyCountMap();
+        planet.defense = 0;
+        message += ` ${planet.name} is colonized by ${player.name}!`;
+      }
+    }
+  }
+  else if(role==='ambassador'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(player.resources < 1){ message = `${player.name} lacks resources to hire an ambassador.`; }
+    else if(planet.status !== 'Colonized'){ message = `${planet.name} cannot be contested right now.`; }
+    else if(planet.owner === playerId){ message = `${player.name} already governs ${planet.name}.`; }
+    else if(planet.defense > 0){ message = `${planet.name} is still defended (${planet.defense}/${DEFENSE_MAX} facilities) \u2014 send fleet to break it down before ambassadors can land.`; }
+    else{
+      player.resources -= 1;
+      const bonus = raceBonusCount(player,'illuminati');
+      planet.ambassadors[playerId] += (1+bonus);
+      ok = true;
+      message = `${player.name} sends an ambassador to ${planet.name}${bonus?` (+${bonus} Illuminati bonus)`:''} (${planet.ambassadors[playerId]}/${planet.ambassadorsReq}).`;
+      if(planet.ambassadors[playerId] >= planet.ambassadorsReq){
+        message += ` ${planet.name} is thrown into unrest \u2014 status: Neutral.`;
+        planet.status = 'Neutral';
+        planet.owner = null;
+        planet.ambassadors = emptyCountMap();
+        planet.explorers = emptyCountMap();
+        planet.governors = emptyCountMap();
+        planet.defense = 0;
+      }
+    }
+  }
+  else if(role==='governor'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(player.resources < 1){ message = `${player.name} lacks resources to hire a governor.`; }
+    else if(planet.status !== 'Neutral'){ message = `${planet.name} has no unrest to resolve.`; }
+    else{
+      player.resources -= 1;
+      const bonus = raceBonusCount(player,'empirical');
+      planet.governors[playerId] += (1+bonus);
+      ok = true;
+      message = `${player.name} dispatches a governor to ${planet.name}${bonus?` (+${bonus} Empirical bonus)`:''} (${planet.governors[playerId]}/${planet.governorsReq}).`;
+      if(planet.governors[playerId] >= planet.governorsReq){
+        planet.status = 'Colonized';
+        planet.owner = playerId;
+        planet.governors = emptyCountMap();
+        planet.ambassadors = emptyCountMap();
+        planet.defense = 0;
+        message += ` ${player.name} restores order and governs ${planet.name}!`;
+      }
+    }
+  }
+  else if(role==='defense'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(planet.status !== 'Colonized' || planet.owner !== playerId){ message = `${player.name} can only fortify a world they govern.`; }
+    else if(planet.defense >= DEFENSE_MAX){ message = `${planet.name} is already at maximum defense (${DEFENSE_MAX}/${DEFENSE_MAX}).`; }
+    else if(player.resources < DEFENSE_COST){ message = `${player.name} needs ${DEFENSE_COST} resources to build a defense facility.`; }
+    else{
+      player.resources -= DEFENSE_COST;
+      const bonus = raceBonusCount(player,'mercurial');
+      const gained = Math.min(1+bonus, DEFENSE_MAX-planet.defense);
+      planet.defense += gained;
+      ok = true;
+      message = `${player.name} builds a defense facility on ${planet.name}${bonus?` (+${bonus} Mercurial bonus)`:''} (${planet.defense}/${DEFENSE_MAX}).`;
+    }
+  }
+  else if(role==='fleet'){
+    if(player.fleet >= FLEET_MAX){ message = `${player.name} already commands the maximum fleet (${FLEET_MAX}/${FLEET_MAX}).`; }
+    else if(player.resources < FLEET_COST){ message = `${player.name} needs ${FLEET_COST} resources to commission a fleet.`; }
+    else{
+      player.resources -= FLEET_COST;
+      const bonus = raceBonusCount(player,'dragonatic');
+      const gained = Math.min(1+bonus, FLEET_MAX-player.fleet);
+      player.fleet += gained;
+      ok = true;
+      message = `${player.name} commissions a fleet${bonus?` (+${bonus} Dragonatic bonus)`:''} (${player.fleet}/${FLEET_MAX}).`;
+    }
+  }
+  else if(role==='attack'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(planet.status !== 'Colonized' || planet.owner === playerId || !planet.owner){ message = `${player.name} can only send fleet against a rival-held world.`; }
+    else if(planet.defense <= 0){ message = `${planet.name} has no defense left to destroy \u2014 send an ambassador instead.`; }
+    else if(player.fleet <= 0){ message = `${player.name} has no fleet available to attack.`; }
+    else{
+      player.fleet -= 1;
+      planet.defense -= 1;
+      ok = true;
+      message = `${player.name} sends a fleet against ${planet.name}, canceling one defense facility (${planet.defense}/${DEFENSE_MAX} remaining).`;
+      if(planet.defense === 0){
+        message += ` ${planet.name}'s defenses are down \u2014 ambassadors can now land.`;
+      }
+    }
+  }
+  else if(role==='starfleet_upgrade'){
+    if(player.fleet < STARFLEET_FLEET_COST){ message = `${player.name} needs ${STARFLEET_FLEET_COST} fleet in reserve to commission a Star Fleet (has ${player.fleet}).`; }
+    else{
+      player.fleet -= STARFLEET_FLEET_COST;
+      player.starFleet += 1;
+      ok = true;
+      message = `${player.name} fuses ${STARFLEET_FLEET_COST} fleet into a single Star Fleet armada! (${player.starFleet} Star Fleet in reserve)`;
+    }
+  }
+  else if(role==='starfleet_attack'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(player.starFleet <= 0){ message = `${player.name} has no Star Fleet ready.`; }
+    else if(planet.status !== 'Colonized' || planet.owner === playerId || !planet.owner){ message = `Star Fleet can only strike a rival-held, Colonized world.`; }
+    else{
+      player.starFleet -= 1;
+      planet.owner = playerId;
+      planet.explorers = emptyCountMap();
+      planet.ambassadors = emptyCountMap();
+      planet.governors = emptyCountMap();
+      planet.defense = 0;
+      planet.seed = Math.floor(Math.random()*1e9);
+      ok = true;
+      message = `\u2694 ${player.name}'s STAR FLEET obliterates all resistance and instantly conquers ${planet.name}!`;
+    }
+  }
+  else if(role==='corporation'){
+    if(player.corporationRace){ message = `${player.name} already operates a corporation.`; }
+    else if(player.resources < CORPORATION_COST){ message = `${player.name} needs ${CORPORATION_COST} resources to establish a corporation (has ${player.resources}).`; }
+    else{
+      player.resources -= CORPORATION_COST;
+      const hired = randomRace();
+      player.corporationRace = hired.key;
+      ok = true;
+      const stack = hired.key===player.race ? ' \u2014 doubling their own race ability!' : ', stacking a second ability onto their own race.';
+      message = `${player.name} establishes a corporation employing the ${hired.name} (${hired.bonus})${stack}`;
+    }
+  }
+
+  if(ok){
+    s.log = [{tag:role.toUpperCase().replace(/_/g,' '), text:message}, ...s.log].slice(0,100);
+  }
+  return {state:s, ok, message};
+}
+
+function collectResources(state){
+  const s = clone(state);
+  let collected = [];
+  PLAYER_IDS.forEach(pid=>{
+    const p = s.players[pid];
+    const bonus = raceBonusCount(p,'human');
+    const gain = 1 + bonus;
+    p.resources += gain;
+    collected.push(`${p.name} gains ${gain} (round income${bonus?` + ${bonus} Human bonus`:''})`);
+  });
+  s.planets.forEach(planet=>{
+    if(planet.status==='Colonized' && planet.owner){
+      s.players[planet.owner].resources += planet.resourceYield;
+      collected.push(`${s.players[planet.owner].name} collects ${planet.resourceYield} from ${planet.name}`);
+    }
+  });
+  if(collected.length){
+    s.log = [{tag:'ROUND INCOME', text: collected.join(' \u00b7 ')}, ...s.log].slice(0,100);
+  }
+  return s;
+}
+
+function checkWinner(state){
+  for(const id of PLAYER_IDS){
+    if(state.planets.every(p=>p.owner===id)) return id;
+  }
+  return null;
+}
+
+function pickBotAction(state, selfId){
+  const s = state;
+  const self = s.players[selfId];
+  const rivals = rivalsOf(selfId);
+
+  const rivalColonized = s.planets.filter(p=>p.status==='Colonized' && rivals.includes(p.owner));
+  if(self.starFleet > 0 && rivalColonized.length){
+    const targets = [...rivalColonized].sort((a,b)=> b.proportion - a.proportion);
+    return {role:'starfleet_attack', planetId:targets[0].id};
+  }
+
+  const neutrals = s.planets.filter(p=>p.status==='Neutral');
+  if(neutrals.length && self.resources >= 1){
+    const sorted = [...neutrals].sort((a,b)=> (b.governors[selfId]-a.governors[selfId]) || (b.proportion-a.proportion));
+    return {role:'governor', planetId:sorted[0].id};
+  }
+
+  if(self.fleet >= STARFLEET_FLEET_COST){
+    return {role:'starfleet_upgrade', planetId:s.planets[0].id};
+  }
+
+  const defendedRivals = s.planets.filter(p=>p.status==='Colonized' && rivals.includes(p.owner) && p.defense>0);
+  if(defendedRivals.length && self.fleet > 0){
+    const sorted = [...defendedRivals].sort((a,b)=> a.defense - b.defense);
+    return {role:'attack', planetId:sorted[0].id};
+  }
+
+  const openRivals = s.planets.filter(p=>p.status==='Colonized' && rivals.includes(p.owner) && p.defense===0);
+  if(openRivals.length && self.resources >= 1){
+    const sorted = [...openRivals].sort((a,b)=> (a.ambassadorsReq-a.ambassadors[selfId]) - (b.ambassadorsReq-b.ambassadors[selfId]));
+    return {role:'ambassador', planetId:sorted[0].id};
+  }
+
+  if(defendedRivals.length && self.resources >= FLEET_COST && self.fleet < FLEET_MAX){
+    return {role:'fleet', planetId:s.planets[0].id};
+  }
+
+  const open = s.planets.filter(p=>p.status==='New');
+  if(open.length && self.resources >= 1){
+    const sorted = [...open].sort((a,b)=> ((a.explorersReq-a.explorers[selfId]) - (b.explorersReq-b.explorers[selfId])) || (b.proportion-a.proportion));
+    return {role:'explorer', planetId:sorted[0].id};
+  }
+
+  if(!self.corporationRace && self.resources >= CORPORATION_COST){
+    return {role:'corporation', planetId:s.planets[0].id};
+  }
+
+  const ownWorlds = s.planets.filter(p=>p.status==='Colonized' && p.owner===selfId && p.defense < DEFENSE_MAX);
+  if(ownWorlds.length && self.resources >= DEFENSE_COST){
+    const sorted = [...ownWorlds].sort((a,b)=> b.proportion - a.proportion);
+    return {role:'defense', planetId:sorted[0].id};
+  }
+
+  if(self.resources >= FLEET_COST && self.fleet < FLEET_MAX){
+    return {role:'fleet', planetId:s.planets[0].id};
+  }
+
+  return null;
+}
+
+function mulberry32(seed){
+  let a = seed;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function planetPalette(planet){
+  if(planet.status==='Colonized' && planet.owner===1){
+    return { base:'#0f3d5e', blobs:['#3f6b3f','#527d4a','#2f5230','#6b8f52'], ice:true, clouds:'rgba(255,255,255,0.10)' };
+  }
+  if(planet.status==='Colonized' && planet.owner===2){
+    return { base:'#123f52', blobs:['#8a4a2c','#a35c34','#6b3820','#c97a3f'], ice:true, clouds:'rgba(255,255,255,0.10)' };
+  }
+  if(planet.status==='Colonized' && planet.owner===3){
+    return { base:'#123252', blobs:['#6b4a8a','#7d5a9e','#523a6b','#8f6bb0'], ice:true, clouds:'rgba(255,255,255,0.10)' };
+  }
+  if(planet.status==='Neutral'){
+    return { base:'#2a140c', blobs:['#e8a33d','#c9762e','#8a3f1f','#5c2413'], ice:false, clouds:'rgba(255,190,90,0.08)' };
+  }
+  return { base:'#2c2822', blobs:['#4a4438','#5c5346','#241f1a','#6b6152'], ice:false, clouds:'rgba(255,255,255,0.03)' };
+}
+
+function drawPlanet(canvas, planet){
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const cx = size/2, cy = size/2, r = size/2;
+  const rand = mulberry32(planet.seed);
+  const palette = planetPalette(planet);
+
+  ctx.clearRect(0,0,size,size);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
+
+  ctx.fillStyle = palette.base;
+  ctx.fillRect(0,0,size,size);
+
+  const blobCount = 7 + Math.floor(rand()*5);
+  for(let i=0;i<blobCount;i++){
+    const bx = rand()*size, by = rand()*size, br = (0.10+rand()*0.20)*size;
+    ctx.fillStyle = palette.blobs[Math.floor(rand()*palette.blobs.length)];
+    ctx.beginPath();
+    const lobes = 4 + Math.floor(rand()*3);
+    for(let k=0;k<lobes;k++){
+      const ox = bx + (rand()-0.5)*br*0.9;
+      const oy = by + (rand()-0.5)*br*0.9;
+      const orad = br*(0.45+rand()*0.65);
+      ctx.moveTo(ox+orad, oy);
+      ctx.arc(ox, oy, orad, 0, Math.PI*2);
+    }
+    ctx.fill();
+  }
+
+  if(palette.ice){
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.beginPath(); ctx.ellipse(cx, size*0.06, r*0.95, size*0.16, 0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, size*0.94, r*0.95, size*0.16, 0,0,Math.PI*2); ctx.fill();
+  }
+
+  for(let i=0;i<5;i++){
+    ctx.fillStyle = palette.clouds;
+    const cxx = rand()*size, cyy = rand()*size, cr = (0.12+rand()*0.18)*size;
+    ctx.beginPath(); ctx.ellipse(cxx, cyy, cr, cr*0.4, rand()*Math.PI, 0, Math.PI*2); ctx.fill();
+  }
+
+  const shade = ctx.createRadialGradient(cx-r*0.4, cy-r*0.4, r*0.05, cx, cy, r*1.2);
+  shade.addColorStop(0,'rgba(255,255,255,0.22)');
+  shade.addColorStop(0.45,'rgba(0,0,0,0)');
+  shade.addColorStop(1,'rgba(0,0,0,0.6)');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0,0,size,size);
+
+  ctx.restore();
+}
+
+function render(state){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  const wrap = document.createElement('div');
+
+  wrap.innerHTML += `
+    <div class="header">
+      <div>
+        <h1>Dominion of Worlds</h1>
+        <div class="sub">Planetary exploration \u00b7 colonization \u00b7 conquest \u00b7 corporations</div>
+      </div>
+      <div class="eyebrow">Round ${state.round}</div>
+    </div>
+  `;
+
+  const tabBar = document.createElement('div');
+  tabBar.className = 'tab-bar';
+  tabBar.innerHTML = `
+    <button class="tab-btn ${state.activeTab==='rules'?'active':''}" data-tab="rules">Rules</button>
+    <button class="tab-btn ${state.activeTab==='game'?'active':''}" data-tab="game">Game</button>
+    <button class="tab-btn ${state.activeTab==='logs'?'active':''}" data-tab="logs">Transmission Logs</button>
+  `;
+  wrap.appendChild(tabBar);
+
+  if(state.winner){
+    wrap.innerHTML += `
+      <div class="winner-banner">
+        <h2>${state.players[state.winner].name} rules the dominion.</h2>
+        <p>All three worlds answer to one power.</p>
+      </div>
+    `;
+  }
+
+  if(state.activeTab==='rules'){
+    const rulesBox = document.createElement('div');
+    rulesBox.className = 'rules-box';
+    rulesBox.innerHTML = `
+      <h3>Players</h3>
+      <div class="rule-block">Three powers compete: you (human) and two independent bots. The two bots never collaborate, share information, or specifically gang up on the human \u2014 each bot picks the best available target purely by its own criteria, whether that target is you or the other bot.</div>
+
+      <h3>Worlds</h3>
+      <div class="rule-block">Three worlds are randomly sized each game as Small, Medium, or Large (proportion \u00d71 / \u00d72 / \u00d74). Sizing scales every requirement and every yield below.</div>
+
+      <h3>Turn Order &amp; Races</h3>
+      <div class="rule-block">Turn order among all three players is randomized every game. Each player is also randomly assigned one of 5 races (no two players share the same primary race) \u2014 the human-controlled player has no special link to the Human Dominion race and is just as likely to draw any of the 5. Each race carries a standing advantage:</div>
+      <div class="rule-block">\u2022 <b>Human Dominion</b> \u2014 +1 resource every round.</div>
+      <div class="rule-block">\u2022 <b>Dragonatic Ascendancy</b> \u2014 +1 extra fleet whenever fleet is built.</div>
+      <div class="rule-block">\u2022 <b>Mercurial Concord</b> \u2014 +1 extra defense whenever a defense facility is built.</div>
+      <div class="rule-block">\u2022 <b>Illuminati Order</b> \u2014 +1 extra ambassador progress whenever an ambassador is sent.</div>
+      <div class="rule-block">\u2022 <b>Empirical Hegemony</b> \u2014 +1 extra governor progress whenever a governor is sent.</div>
+
+      <h3>Corporations</h3>
+      <div class="rule-block">Any player may establish 1 Corporation for ${CORPORATION_COST} resources \u2014 a one-time investment. A corporation employs a randomly chosen race's ability in addition to the player's own, and abilities stack. If the corporation happens to employ the same race as the player's own, that ability's bonus doubles.</div>
+
+      <h3>Colonize</h3>
+      <div class="rule-block"><b>Explorers</b> claim a New (uncolonized) world. Requirement equals the world's proportion: S=1, M=2, L=4 explorers.</div>
+
+      <h3>Contest &amp; Reclaim</h3>
+      <div class="rule-block"><b>Ambassadors</b> contest a rival's Colonized world, requirement = proportion+1. Any of the two non-owning players may build ambassador progress independently \u2014 whichever reaches the requirement first throws the world into unrest (Neutral, ownerless).</div>
+      <div class="rule-block"><b>Governors</b> race on a Neutral world (same requirement) \u2014 any of the three players may compete; whichever reaches it first restores the world as Colonized under them.</div>
+
+      <h3>Defense</h3>
+      <div class="rule-block">An owner may fortify their own Colonized world: ${DEFENSE_COST} resources per facility, max ${DEFENSE_MAX} per world. While any defense stands, ambassadors cannot land there.</div>
+
+      <h3>Fleet &amp; Attack</h3>
+      <div class="rule-block"><b>Fleet</b> is commissioned at the player level (not tied to any world): ${FLEET_COST} resources each, max ${FLEET_MAX} in reserve.</div>
+      <div class="rule-block">Sending a fleet to <b>attack</b> a rival's defended world cancels 1 defense facility per fleet, 1:1 \u2014 both are consumed in the clash. Once defense hits 0, ambassadors may contest the world again.</div>
+
+      <h3>Star Fleet \u2014 the decisive weapon</h3>
+      <div class="rule-block">Once a player amasses ${STARFLEET_FLEET_COST}/${STARFLEET_FLEET_COST} fleet, they may fuse the entire reserve into 1 <b>Star Fleet</b> armada.</div>
+      <div class="rule-block">A Star Fleet strike bypasses defense, ambassadors, and governors entirely \u2014 it <b>immediately conquers</b> any rival Colonized world in a single action.</div>
+
+      <h3>Income</h3>
+      <div class="rule-block">Every player starts with 5 resources. Income is paid once per full round \u2014 that is, after all three players have taken their turn \u2014 rather than after every individual turn: 1 resource base per player (doubled to 2 for Human Dominion), plus resources equal to each Colonized world's size proportion (S=1, M=2, L=4) for its owner.</div>
+
+      <h3>Turns &amp; Victory</h3>
+      <div class="rule-block">Each turn grants 3 actions \u2014 you needn't use them all. Own all three worlds to win the dominion.</div>
+    `;
+    wrap.appendChild(rulesBox);
+  }
+
+  if(state.activeTab==='game'){
+    const hud = document.createElement('div');
+    hud.className = 'hud';
+    PLAYER_IDS.forEach(pid=>{
+      const p = state.players[pid];
+      const rm = raceMeta(p.race);
+      const corpRm = p.corporationRace ? raceMeta(p.corporationRace) : null;
+      const card = document.createElement('div');
+      card.className = 'hud-card' + (state.currentPlayer===pid && !state.winner ? ' active':'');
+      card.innerHTML = `
+        <div class="who"><span class="dot ${PLAYER_COLOR[pid]}"></span> ${p.name}${p.isBot?' (bot)':''}</div>
+        <div class="eyebrow" style="margin-top:2px;">${rm.name} \u00b7 ${rm.bonus}</div>
+        <div class="res">${p.resources}<span>resources</span></div>
+        <div class="sub-stats">
+          <div class="item">${p.fleet}/${FLEET_MAX}<span>fleet</span></div>
+          <div class="item">${p.starFleet}<span>star fleet</span></div>
+        </div>
+        <div class="corp-line">${corpRm ? `Corporation: <b>${corpRm.name}</b> (${corpRm.bonus})` : `Corporation: none (${CORPORATION_COST} resources to establish)`}</div>
+      `;
+      hud.appendChild(card);
+    });
+    const turnCard = document.createElement('div');
+    turnCard.className = 'hud-turn';
+    turnCard.innerHTML = `
+      <div class="round">${state.winner ? 'GAME OVER' : (state.players[state.currentPlayer].isBot ? state.players[state.currentPlayer].name+' ACTING' : 'YOUR TURN')}</div>
+      <div class="actions">${state.actionsLeft} action${state.actionsLeft===1?'':'s'} left</div>
+    `;
+    hud.appendChild(turnCard);
+    wrap.appendChild(hud);
+
+    const grid = document.createElement('div');
+    grid.className = 'planets';
+    state.planets.forEach(planet=>{
+      const card = document.createElement('div');
+      let statusClass = 'status-new';
+      let ownerClass = '';
+      if(planet.status==='Colonized'){ statusClass = 'status-owned-'+planet.owner; ownerClass = ' owned-'+planet.owner; }
+      if(planet.status==='Neutral'){ statusClass='status-neutral'; ownerClass=' status-neutral'; }
+
+      card.className = 'planet-card' + ownerClass;
+
+      let statusLabel = planet.status==='New' ? 'Uncolonized' : planet.status;
+      let statusCls = planet.status==='New' ? 'new' : (planet.status==='Neutral' ? 'neutral' : 'owned-'+planet.owner);
+
+      let progressHTML = '';
+      if(planet.status==='New'){
+        progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
+            <div class="progress-label"><span>${state.players[pid].name}: explorers</span><span>${planet.explorers[pid]}/${planet.explorersReq}</span></div>
+            <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.explorers[pid]/planet.explorersReq*100)}%"></div></div>
+        `).join('') + '</div>';
+      } else if(planet.status==='Colonized'){
+        const defenseBlocking = planet.defense > 0;
+        const rivals = rivalsOf(planet.owner);
+        progressHTML = `
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Defense (blocks ambassadors)</span><span>${planet.defense}/${DEFENSE_MAX}</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, planet.defense/DEFENSE_MAX*100)}%; background:${defenseBlocking?'var(--gold)':'#2a2c38'};"></div></div>
+            ${rivals.map(pid=>`
+              <div class="progress-label"><span>${state.players[pid].name} ambassadors ${defenseBlocking?'(blocked)':''}</span><span>${planet.ambassadors[pid]}/${planet.ambassadorsReq}</span></div>
+              <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.ambassadors[pid]/planet.ambassadorsReq*100)}%; opacity:${defenseBlocking?0.35:1};"></div></div>
+            `).join('')}
+          </div>
+        `;
+      } else if(planet.status==='Neutral'){
+        progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
+            <div class="progress-label"><span>${state.players[pid].name}: governors</span><span>${planet.governors[pid]}/${planet.governorsReq}</span></div>
+            <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.governors[pid]/planet.governorsReq*100)}%"></div></div>
+        `).join('') + '</div>';
+      }
+
+      card.innerHTML = `
+        ${planet.status==='Colonized' ? `<div class="crown">${PLAYER_CROWN[planet.owner]}</div>` : ''}
+        <div class="size-tag">Size ${planet.size} \u00b7 \u00d7${planet.proportion}</div>
+        <div class="orb ${SIZE_META[planet.size].orbClass} ${statusClass}"><canvas id="canvas-${planet.id}" width="200" height="200"></canvas></div>
+        <div class="planet-name">${planet.name}</div>
+        <div class="planet-status ${statusCls}">${statusLabel}${planet.status==='Colonized' ? ' \u00b7 '+state.players[planet.owner].name : ''}</div>
+        <div class="stat-row"><span>Yield / turn</span><b>${planet.resourceYield}</b></div>
+        <div class="stat-row"><span>Explorers needed</span><b>${planet.explorersReq}</b></div>
+        <div class="stat-row"><span>Ambassadors needed</span><b>${planet.ambassadorsReq}</b></div>
+        <div class="stat-row"><span>Governors needed</span><b>${planet.governorsReq}</b></div>
+        <div class="stat-row"><span>Defense</span><b>${planet.defense}/${DEFENSE_MAX}</b></div>
+        ${progressHTML}
+      `;
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+
+    if(!state.winner && state.currentPlayer===1 && !state.players[1].isBot){
+      const panel = document.createElement('div');
+      panel.className = 'actions-panel';
+      panel.innerHTML = `
+        <h2>Issue an order</h2>
+        <div class="hint">Choose a role and a world, then deploy. Each order costs 1 action plus its resource/fleet cost.</div>
+        <div class="controls-row">
+          <select id="roleSelect">
+            <option value="explorer">Explorer \u2014 colonize a New world (1 resource)</option>
+            <option value="ambassador">Ambassador \u2014 contest a rival world (1 resource)</option>
+            <option value="governor">Governor \u2014 reclaim a Neutral world (1 resource)</option>
+            <option value="defense">Defense \u2014 fortify your world (3 resources, max 5)</option>
+            <option value="fleet">Fleet \u2014 commission a warship (5 resources, max 10)</option>
+            <option value="attack">Attack \u2014 send fleet vs rival defense (1 fleet)</option>
+            <option value="starfleet_upgrade">Star Fleet Upgrade \u2014 fuse 10 fleet into 1 Star Fleet</option>
+            <option value="starfleet_attack">Star Fleet Strike \u2014 instantly conquer a rival world (1 star fleet)</option>
+            <option value="corporation">Corporation \u2014 hire another race's ability (${CORPORATION_COST} resources, one-time)</option>
+          </select>
+          <select id="planetSelect">
+            ${state.planets.map(p=>`<option value="${p.id}">${p.name} (${p.size} \u00b7 ${p.status})</option>`).join('')}
+          </select>
+          <button class="role-btn" id="deployBtn" ${state.actionsLeft<=0 ? 'disabled':''}>Deploy</button>
+          <button class="end-turn" id="endTurnBtn">End Turn</button>
+        </div>
+      `;
+      wrap.appendChild(panel);
+    } else if(!state.winner && state.players[state.currentPlayer].isBot){
+      const panel = document.createElement('div');
+      panel.className = 'actions-panel';
+      panel.innerHTML = `<h2>${state.players[state.currentPlayer].name} is plotting its next move...</h2>`;
+      wrap.appendChild(panel);
+    }
+
+    if(state.winner){
+      const restartWrap = document.createElement('div');
+      restartWrap.style.textAlign='center';
+      restartWrap.style.marginBottom='20px';
+      restartWrap.innerHTML = `<button class="restart" id="restartBtn">Begin a new dominion</button>`;
+      wrap.appendChild(restartWrap);
+    }
+  }
+
+  if(state.activeTab==='logs'){
+    const logPanel = document.createElement('div');
+    logPanel.className = 'log-panel';
+    logPanel.innerHTML = `
+      <h2>TRANSMISSION LOG</h2>
+      ${state.log.map(l=>`<div class="log-entry"><span class="tag">[${l.tag}]</span>${l.text}</div>`).join('')}
+    `;
+    wrap.appendChild(logPanel);
+  }
+
+  app.appendChild(wrap);
+
+  state.planets.forEach(planet=>{
+    const c = document.getElementById('canvas-'+planet.id);
+    if(c) drawPlanet(c, planet);
+  });
+
+  tabBar.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      GAME = clone(GAME);
+      GAME.activeTab = btn.dataset.tab;
+      render(GAME);
+    });
+  });
+
+  const deployBtn = document.getElementById('deployBtn');
+  if(deployBtn){
+    deployBtn.addEventListener('click', ()=>{
+      const role = document.getElementById('roleSelect').value;
+      const planetId = document.getElementById('planetSelect').value;
+      handleHumanAction(role, planetId);
+    });
+  }
+  const endTurnBtn = document.getElementById('endTurnBtn');
+  if(endTurnBtn){
+    endTurnBtn.addEventListener('click', handleEndTurn);
+  }
+  const restartBtn = document.getElementById('restartBtn');
+  if(restartBtn){
+    restartBtn.addEventListener('click', ()=>{
+      GAME = freshState();
+      render(GAME);
+      if(GAME.players[GAME.currentPlayer].isBot){
+        setTimeout(runBotTurn, 700);
+      }
+    });
+  }
+}
+
+let GAME = freshState();
+
+function handleHumanAction(role, planetId){
+  if(GAME.winner || GAME.actionsLeft<=0) return;
+  const result = applyAction(GAME, 1, role, planetId);
+  if(result.ok){
+    GAME = result.state;
+    GAME.actionsLeft -= 1;
+    const w = checkWinner(GAME);
+    if(w) GAME.winner = w;
+  } else {
+    GAME = clone(GAME);
+    GAME.log = [{tag:'BLOCKED', text: result.message}, ...GAME.log].slice(0,100);
+  }
+  render(GAME);
+}
+
+function handleEndTurn(){
+  if(GAME.winner) return;
+  advanceTurn();
+}
+
+function advanceTurn(){
+  let s = clone(GAME);
+  s.turnIndex = (s.turnIndex + 1) % s.turnOrder.length;
+  s.currentPlayer = s.turnOrder[s.turnIndex];
+  if(s.turnIndex === 0){
+    s.round += 1;
+    s = collectResources(s); // income (base + planet yields) is paid once per full round, after everyone has played
+  }
+  s.actionsLeft = 3;
+  const w = checkWinner(s);
+  if(w) s.winner = w;
+  GAME = s;
+  render(GAME);
+
+  if(!GAME.winner && GAME.players[GAME.currentPlayer].isBot){
+    setTimeout(runBotTurn, 550);
+  }
+}
+
+function runBotTurn(){
+  if(GAME.winner || GAME.actionsLeft<=0 || !GAME.players[GAME.currentPlayer].isBot){
+    if(!GAME.winner && GAME.players[GAME.currentPlayer].isBot && GAME.actionsLeft<=0){
+      setTimeout(advanceTurn, 400);
+    }
+    return;
+  }
+  const selfId = GAME.currentPlayer;
+  const choice = pickBotAction(GAME, selfId);
+  if(!choice){
+    GAME = clone(GAME);
+    GAME.log = [{tag:'PASS', text:`${GAME.players[selfId].name} has no viable move and passes.`}, ...GAME.log].slice(0,100);
+    GAME.actionsLeft = 0;
+    render(GAME);
+    setTimeout(advanceTurn, 500);
+    return;
+  }
+  const result = applyAction(GAME, selfId, choice.role, choice.planetId);
+  GAME = result.state;
+  GAME.actionsLeft -= 1;
+  const w = checkWinner(GAME);
+  if(w) GAME.winner = w;
+  render(GAME);
+
+  if(!GAME.winner){
+    if(GAME.actionsLeft > 0){
+      setTimeout(runBotTurn, 650);
+    } else {
+      setTimeout(advanceTurn, 550);
+    }
+  }
+}
+
+render(GAME);
+if(GAME.players[GAME.currentPlayer].isBot){
+  setTimeout(runBotTurn, 700);
+}
+</script>
+
+</body>
+</html>
