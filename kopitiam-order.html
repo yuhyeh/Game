@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kopitiam Order</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4ead9;
+    color: #3d2b1f;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 420px; }
+
+  .header { text-align: center; margin-bottom: 24px; }
+  .header-badge {
+    display: inline-block;
+    background: #8a3324;
+    color: #fdf6ec;
+    padding: 8px 20px;
+    border-radius: 8px;
+    box-shadow: 0 3px 0 0 #5e2117;
+    font-family: Georgia, serif;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+  }
+  .header-sub {
+    color: #8a7361;
+    font-size: 12px;
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+  }
+
+  .card {
+    background: #fffaf2;
+    border: 1px solid #e6d8c3;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .card > * + * { margin-top: 20px; }
+
+  .field-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #8a7361;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .drink-rows { display: flex; flex-direction: column; gap: 8px; }
+
+  .opt-btn {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    border: 2px solid #e3d5c0;
+    background: #fff;
+    color: #5c4433;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .opt-btn:hover { border-color: #c9a876; }
+  .opt-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 2px 0 0 #1741a6;
+    transform: scale(1.04);
+  }
+
+  .other-input {
+    margin-top: 10px;
+    width: 100%;
+    background: #fdf6ec;
+    border: 1px solid #e3d5c0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #5c4433;
+    outline: none;
+    display: none;
+  }
+  .other-input.show { display: block; }
+  .other-input:focus { border-color: #c9a876; }
+  .other-input::placeholder { color: #b5a48f; }
+
+  .qty-row { display: flex; align-items: center; gap: 16px; }
+  .round-btn {
+    width: 40px; height: 40px;
+    border-radius: 999px;
+    border: 1px solid #e3d5c0;
+    background: #fdf6ec;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: transform 0.1s ease;
+  }
+  .round-btn:active { transform: scale(0.95); }
+  .round-btn.minus { color: #8a3324; }
+  .round-btn.plus { color: #2f6b4f; }
+  .qty-value {
+    width: 48px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: Georgia, serif;
+  }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    background: #8a3324;
+    color: #fdf6ec;
+    box-shadow: 0 3px 0 0 #5e2117;
+    transition: all 0.08s ease;
+  }
+  .add-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+  .add-btn:disabled {
+    background: #e6d8c3;
+    color: #b5a48f;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .order-section { margin-top: 24px; }
+  .order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .clear-btn {
+    background: none;
+    border: none;
+    color: #8a7361;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .clear-btn:hover { color: #8a3324; }
+
+  .empty-state {
+    text-align: center;
+    font-size: 14px;
+    color: #b5a48f;
+    padding: 32px 0;
+    border: 1px dashed #e3d5c0;
+    border-radius: 12px;
+  }
+
+  .order-list {
+    background: #fffaf2;
+    border: 1px solid #e6d8c3;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #efe3d0;
+  }
+  .order-item:last-child { border-bottom: none; }
+  .order-item-desc { font-size: 14px; min-width: 0; }
+  .order-item-desc .muted { color: #8a7361; }
+  .order-item-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .mini-btn {
+    width: 28px; height: 28px;
+    border-radius: 999px;
+    border: 1px solid #e3d5c0;
+    background: #fdf6ec;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .mini-btn:active { transform: scale(0.95); }
+  .mini-btn.minus { color: #8a3324; }
+  .mini-btn.plus { color: #2f6b4f; }
+  .item-qty { width: 20px; text-align: center; font-size: 14px; font-weight: bold; }
+  .remove-btn {
+    background: none;
+    border: none;
+    color: #b5a48f;
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: 4px;
+    line-height: 1;
+  }
+  .remove-btn:hover { color: #8a3324; }
+
+  .copy-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid #e3d5c0;
+    background: #fdf6ec;
+    color: #5c4433;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: border-color 0.12s ease;
+  }
+  .copy-btn:hover { border-color: #c9a876; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-badge">Kopitiam Order</div>
+    <div class="header-sub">build your cup, then add to the order</div>
+  </div>
+
+  <div class="card">
+    <div>
+      <div class="field-label">Drink</div>
+      <div class="drink-rows">
+        <div class="btn-row" id="row-kopi"></div>
+        <div class="btn-row" id="row-teh"></div>
+        <div class="btn-row" id="row-other"></div>
+      </div>
+      <input type="text" id="otherInput" class="other-input" placeholder="Type the drink name…" />
+    </div>
+
+    <div>
+      <div class="field-label">Thickness</div>
+      <div class="btn-row" id="row-thickness"></div>
+    </div>
+
+    <div>
+      <div class="field-label">Sweetness</div>
+      <div class="btn-row" id="row-sweet"></div>
+    </div>
+
+    <div>
+      <div class="field-label">Coldness</div>
+      <div class="btn-row" id="row-cold"></div>
+    </div>
+
+    <div>
+      <div class="field-label">Quantity</div>
+      <div class="qty-row">
+        <button class="round-btn minus" id="qtyMinus">−</button>
+        <div class="qty-value" id="qtyValue">1</div>
+        <button class="round-btn plus" id="qtyPlus">+</button>
+      </div>
+    </div>
+
+    <button class="add-btn" id="addBtn">Add to order</button>
+  </div>
+
+  <div class="order-section">
+    <div class="order-header">
+      <div class="field-label" id="orderTitle" style="margin-bottom:0;">Order</div>
+      <button class="clear-btn" id="clearBtn" style="display:none;">🗑 Clear</button>
+    </div>
+    <div id="orderEmpty" class="empty-state">No cups yet — build one above</div>
+    <div id="orderList" class="order-list" style="display:none;"></div>
+    <button class="copy-btn" id="copyBtn" style="display:none;">📋 Copy order as text</button>
+  </div>
+</div>
+
+<script>
+  const KOPI_SERIES = ["Kopi O", "Kopi", "Kopi C"];
+  const TEH_SERIES = ["Teh O", "Teh", "Teh C"];
+  const OTHER_DRINKS = ["Milo", "Diao Yu", "Other"];
+  const THICKNESS = ["Gao", "Di Lo", "Poh"];
+  const SWEETS = ["Kosong", "Sui Dai"];
+  const COLDS = ["Peng"];
+
+  let state = {
+    drink: "Kopi O",
+    otherName: "",
+    thickness: null,
+    sweet: null,
+    cold: null,
+    qty: 1,
+  };
+  let order = [];
+
+  function makeOptButton(label, isActive, onClick) {
+    const btn = document.createElement("button");
+    btn.className = "opt-btn" + (isActive ? " active" : "");
+    btn.textContent = label;
+    btn.onclick = onClick;
+    return btn;
+  }
+
+  function renderDrinkRow(containerId, options) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = "";
+    options.forEach((d) => {
+      el.appendChild(makeOptButton(d, state.drink === d, () => {
+        state.drink = d;
+        renderAll();
+      }));
+    });
+  }
+
+  function renderSegmented(containerId, options, currentValue, setter) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = "";
+    options.forEach((opt) => {
+      const active = currentValue === opt;
+      el.appendChild(makeOptButton(opt, active, () => {
+        setter(active ? null : opt);
+        renderAll();
+      }));
+    });
+  }
+
+  function renderAll() {
+    renderDrinkRow("row-kopi", KOPI_SERIES);
+    renderDrinkRow("row-teh", TEH_SERIES);
+    renderDrinkRow("row-other", OTHER_DRINKS);
+
+    const otherInput = document.getElementById("otherInput");
+    if (state.drink === "Other") {
+      otherInput.classList.add("show");
+    } else {
+      otherInput.classList.remove("show");
+    }
+    if (otherInput.value !== state.otherName) otherInput.value = state.otherName;
+
+    renderSegmented("row-thickness", THICKNESS, state.thickness, (v) => (state.thickness = v));
+    renderSegmented("row-sweet", SWEETS, state.sweet, (v) => (state.sweet = v));
+    renderSegmented("row-cold", COLDS, state.cold, (v) => (state.cold = v));
+
+    document.getElementById("qtyValue").textContent = state.qty;
+
+    const canAdd = state.qty > 0 && (state.drink !== "Other" || state.otherName.trim().length > 0);
+    const addBtn = document.getElementById("addBtn");
+    addBtn.disabled = !canAdd;
+
+    renderOrder();
+  }
+
+  function drinkLabel() {
+    return state.drink === "Other" ? (state.otherName.trim() || "Other") : state.drink;
+  }
+
+  function formatItem(item) {
+    const parts = [item.drink];
+    if (item.thickness) parts.push(item.thickness);
+    if (item.sweet) parts.push(item.sweet);
+    if (item.cold) parts.push(item.cold);
+    return `${item.qty}x ${parts.join(" ")}`;
+  }
+
+  function renderOrder() {
+    const empty = document.getElementById("orderEmpty");
+    const list = document.getElementById("orderList");
+    const clearBtn = document.getElementById("clearBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const orderTitle = document.getElementById("orderTitle");
+
+    const totalCups = order.reduce((s, i) => s + i.qty, 0);
+    orderTitle.textContent = order.length > 0 ? `Order · ${totalCups} cup${totalCups === 1 ? "" : "s"}` : "Order";
+
+    if (order.length === 0) {
+      empty.style.display = "block";
+      list.style.display = "none";
+      clearBtn.style.display = "none";
+      copyBtn.style.display = "none";
+      return;
+    }
+
+    empty.style.display = "none";
+    list.style.display = "block";
+    clearBtn.style.display = "flex";
+    copyBtn.style.display = "flex";
+
+    list.innerHTML = "";
+    order.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "order-item";
+
+      const desc = document.createElement("div");
+      desc.className = "order-item-desc";
+      let html = item.drink;
+      if (item.thickness) html += ` <span class="muted">· ${item.thickness}</span>`;
+      if (item.sweet) html += ` <span class="muted">· ${item.sweet}</span>`;
+      if (item.cold) html += ` <span class="muted">· ${item.cold}</span>`;
+      desc.innerHTML = html;
+
+      const controls = document.createElement("div");
+      controls.className = "order-item-controls";
+
+      const minusBtn = document.createElement("button");
+      minusBtn.className = "mini-btn minus";
+      minusBtn.textContent = "−";
+      minusBtn.onclick = () => updateQty(item.id, -1);
+
+      const qtySpan = document.createElement("span");
+      qtySpan.className = "item-qty";
+      qtySpan.textContent = item.qty;
+
+      const plusBtn = document.createElement("button");
+      plusBtn.className = "mini-btn plus";
+      plusBtn.textContent = "+";
+      plusBtn.onclick = () => updateQty(item.id, 1);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.textContent = "✕";
+      removeBtn.onclick = () => removeItem(item.id);
+
+      controls.appendChild(minusBtn);
+      controls.appendChild(qtySpan);
+      controls.appendChild(plusBtn);
+      controls.appendChild(removeBtn);
+
+      row.appendChild(desc);
+      row.appendChild(controls);
+      list.appendChild(row);
+    });
+  }
+
+  function updateQty(id, delta) {
+    order = order
+      .map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
+      .filter((i) => i.qty > 0);
+    renderOrder();
+  }
+
+  function removeItem(id) {
+    order = order.filter((i) => i.id !== id);
+    renderOrder();
+  }
+
+  document.getElementById("otherInput").addEventListener("input", (e) => {
+    state.otherName = e.target.value;
+    const canAdd = state.qty > 0 && (state.drink !== "Other" || state.otherName.trim().length > 0);
+    document.getElementById("addBtn").disabled = !canAdd;
+  });
+
+  document.getElementById("qtyMinus").onclick = () => {
+    state.qty = Math.max(1, state.qty - 1);
+    renderAll();
+  };
+  document.getElementById("qtyPlus").onclick = () => {
+    state.qty += 1;
+    renderAll();
+  };
+
+  document.getElementById("addBtn").onclick = () => {
+    const canAdd = state.qty > 0 && (state.drink !== "Other" || state.otherName.trim().length > 0);
+    if (!canAdd) return;
+    order.push({
+      id: Date.now() + Math.random(),
+      drink: drinkLabel(),
+      thickness: state.thickness,
+      sweet: state.sweet,
+      cold: state.cold,
+      qty: state.qty,
+    });
+    state = { drink: "Kopi O", otherName: "", thickness: null, sweet: null, cold: null, qty: 1 };
+    renderAll();
+  };
+
+  document.getElementById("clearBtn").onclick = () => {
+    order = [];
+    renderOrder();
+  };
+
+  document.getElementById("copyBtn").onclick = () => {
+    const text = order.map(formatItem).join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById("copyBtn");
+      const original = btn.innerHTML;
+      btn.innerHTML = "✓ Copied";
+      setTimeout(() => { btn.innerHTML = original; }, 1500);
+    });
+  };
+
+  renderAll();
+</script>
+</body>
+</html>
