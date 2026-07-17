@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Post Time — Horse Racing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --paper:#F1E9D2;
+    --paper-dark:#e4d9b8;
+    --turf:#0f3d2e;
+    --turf-dark:#0a2a1f;
+    --rail:#7a4a26;
+    --ink:#1c1710;
+    --gold:#b8863b;
+    --crimson:#8f2d2d;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--turf-dark);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(255,255,255,0.03), transparent 40%);
+    font-family:'Inter',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 12px 40px;
+  }
+
+  .program{
+    width:100%;
+    max-width:920px;
+    background:var(--paper);
+    border:1px solid #00000022;
+    box-shadow:0 20px 50px rgba(0,0,0,0.45);
+    position:relative;
+  }
+  .program::before{
+    content:"";
+    position:absolute; inset:8px;
+    border:1.5px solid var(--gold);
+    pointer-events:none;
+  }
+
+  header{
+    text-align:center;
+    padding:22px 20px 14px;
+    border-bottom:2px solid var(--ink);
+    position:relative;
+  }
+  .eyebrow{
+    font-family:'Space Mono',monospace;
+    letter-spacing:0.35em;
+    font-size:11px;
+    text-transform:uppercase;
+    color:var(--crimson);
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Playfair Display',serif;
+    font-weight:900;
+    font-size:clamp(28px,5vw,44px);
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  .subtitle{
+    font-family:'Playfair Display',serif;
+    font-style:italic;
+    font-size:14px;
+    margin-top:6px;
+    color:#4a4030;
+  }
+
+  .body-wrap{ padding:18px 20px 22px; }
+
+  /* PICK PANEL */
+  #pickPanel h2{
+    font-family:'Playfair Display',serif;
+    font-size:19px;
+    margin:0 0 12px;
+    border-bottom:1px solid #00000030;
+    padding-bottom:8px;
+  }
+  .entries{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .entry{
+    background:var(--paper-dark);
+    border:1px solid #00000025;
+    padding:10px 12px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    transition:box-shadow .12s ease, border-color .12s ease;
+    text-align:left;
+  }
+  .entry:focus-within{
+    border-color:var(--crimson);
+    box-shadow:0 6px 14px rgba(0,0,0,0.14);
+  }
+  .entry-swatch{
+    width:34px;height:34px;border-radius:50%;
+    flex-shrink:0;
+    border:2px solid var(--ink);
+    position:relative;
+  }
+  .entry-num{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Mono',monospace; font-weight:700; font-size:13px;
+    color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.5);
+  }
+  .entry-field{ flex:1; min-width:0; }
+  .entry-label{
+    font-family:'Space Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:#5a5040;
+    margin-bottom:3px;
+  }
+  .entry-name-input{
+    width:100%;
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom:1px solid #00000030;
+    padding:2px 0;
+  }
+  .entry-name-input:focus{
+    outline:none;
+    border-bottom:1px solid var(--crimson);
+  }
+
+  .go-btn{
+    display:block;
+    width:100%;
+    padding:14px;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:18px;
+    letter-spacing:0.04em;
+    background:var(--crimson);
+    color:#fdf6e3;
+    border:none;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .go-btn:disabled{ background:#9a9382; cursor:not-allowed; }
+  .go-btn:not(:disabled):hover{ background:#71201f; }
+
+  /* RACE VIEW */
+  #raceView{ display:none; }
+  .race-meta{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:'Space Mono',monospace;
+    font-size:12px;
+    margin-bottom:8px;
+    letter-spacing:0.05em;
+  }
+  #clock{ font-weight:700; font-size:16px; }
+  canvas{
+    width:100%;
+    display:block;
+    background:var(--turf);
+    border:3px solid var(--ink);
+  }
+
+  #callBox{
+    margin-top:10px;
+    min-height:22px;
+    font-family:'Space Mono',monospace;
+    font-size:13px;
+    color:var(--turf-dark);
+    text-align:center;
+  }
+
+  /* RESULT */
+  #resultPanel{ display:none; text-align:center; padding-top:6px; }
+  .result-flag{
+    font-family:'Space Mono',monospace;
+    letter-spacing:0.3em;
+    font-size:11px;
+    text-transform:uppercase;
+  }
+  .result-flag{ color:#1a6b32; }
+  #resultHeadline{
+    font-family:'Playfair Display',serif;
+    font-weight:900;
+    font-size:clamp(26px,5vw,40px);
+    margin:6px 0 4px;
+  }
+  #resultSub{ font-size:14px; color:#4a4030; margin-bottom:18px; }
+  .finish-order{
+    list-style:none; padding:0; margin:0 0 20px;
+    display:flex; flex-direction:column; gap:6px;
+    max-width:420px; margin-left:auto; margin-right:auto;
+  }
+  .finish-order li{
+    display:flex; align-items:center; gap:10px;
+    background:var(--paper-dark);
+    padding:8px 12px;
+    border:1px solid #00000020;
+    font-size:14px;
+    text-align:left;
+  }
+  .finish-pos{
+    font-family:'Playfair Display',serif;
+    font-weight:900; font-size:16px;
+    width:22px; text-align:center; color:var(--gold);
+  }
+  .again-btn{
+    padding:12px 28px;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:16px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    cursor:pointer;
+  }
+  .again-btn:hover{ background:#3a3020; }
+
+  footer{
+    margin-top:16px;
+    font-family:'Space Mono',monospace;
+    font-size:10px;
+    color:#5b5b5b;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="program">
+  <header>
+    <div class="eyebrow">Meadow Ridge Downs</div>
+    <h1>Post Time</h1>
+    <div class="subtitle">Five to the gate — name your horses and call the race</div>
+  </header>
+
+  <div class="body-wrap">
+
+    <div id="pickPanel">
+      <h2>Today's Entries — name your horses</h2>
+      <div class="entries" id="entries"></div>
+      <button class="go-btn" id="goBtn">Confirm entries &amp; start race</button>
+    </div>
+
+    <div id="raceView">
+      <div class="race-meta">
+        <span id="raceLabel">RACE IN PROGRESS</span>
+        <span id="clock">0.0s</span>
+      </div>
+      <canvas id="track" width="1000" height="560"></canvas>
+      <div id="callBox">The field is loaded into the gate...</div>
+    </div>
+
+    <div id="resultPanel">
+      <div class="result-flag" id="resultFlag">PHOTO FINISH CONFIRMED</div>
+      <div id="resultHeadline">—</div>
+      <div id="resultSub">—</div>
+      <ol class="finish-order" id="finishOrder"></ol>
+      <button class="again-btn" id="againBtn">Set up next race</button>
+    </div>
+
+  </div>
+  <footer>Simulated event · Meadow Ridge Downs · For entertainment only</footer>
+</div>
+
+<script>
+(function(){
+  const HORSES = [
+    { num:1, name:"A", color:"#8f2d2d", jersey:"#f1e9d2", jerseyPattern:"stripe" },
+    { num:2, name:"B", color:"#1f4e79", jersey:"#f4c542", jerseyPattern:"solid"  },
+    { num:3, name:"C", color:"#b8863b", jersey:"#1c1710", jerseyPattern:"dots"   },
+    { num:4, name:"D", color:"#4b2e63", jersey:"#e8e2d0", jerseyPattern:"solid"  },
+    { num:5, name:"E", color:"#c05a2e", jersey:"#0f3d2e", jerseyPattern:"stripe"},
+  ];
+
+  const entriesEl = document.getElementById('entries');
+  const goBtn = document.getElementById('goBtn');
+  const pickPanel = document.getElementById('pickPanel');
+  const raceView = document.getElementById('raceView');
+  const resultPanel = document.getElementById('resultPanel');
+  const clockEl = document.getElementById('clock');
+  const callBox = document.getElementById('callBox');
+  const canvas = document.getElementById('track');
+  const ctx = canvas.getContext('2d');
+  const againBtn = document.getElementById('againBtn');
+
+  function buildEntries(){
+    entriesEl.innerHTML = "";
+    HORSES.forEach(h=>{
+      const div = document.createElement('div');
+      div.className = 'entry';
+      div.dataset.num = h.num;
+      div.innerHTML = `
+        <div class="entry-swatch" style="background:${h.color}">
+          <div class="entry-num">${h.num}</div>
+        </div>
+        <div class="entry-field">
+          <div class="entry-label">Horse #${h.num}</div>
+          <input class="entry-name-input" type="text" maxlength="24" value="${h.name}" aria-label="Name for horse ${h.num}">
+        </div>`;
+      const input = div.querySelector('input');
+      input.addEventListener('input', ()=>{
+        h.name = input.value.trim() || `Horse #${h.num}`;
+      });
+      entriesEl.appendChild(div);
+    });
+  }
+
+  buildEntries();
+
+  goBtn.addEventListener('click', ()=>{
+    // lock in whatever names are currently typed, falling back to defaults if left blank
+    document.querySelectorAll('.entry-name-input').forEach(input=>{
+      if(!input.value.trim()) input.value = input.getAttribute('data-fallback') || input.value;
+    });
+    pickPanel.style.display = 'none';
+    raceView.style.display = 'block';
+    startRace();
+  });
+
+  againBtn.addEventListener('click', ()=>{
+    resultPanel.style.display = 'none';
+    pickPanel.style.display = 'block';
+    buildEntries();
+  });
+
+  // ---- RACE SIMULATION ----
+  const TRACK_LENGTH = 2400;      // "distance units" horses must cover
+  const LANES = 5;
+  const laneHeight = canvas.height / LANES;
+  const startX = 90;
+  const finishX = canvas.width - 55;
+  const runPixels = finishX - startX;
+
+  function startRace(){
+    callBox.textContent = "The field is loaded into the gate...";
+    clockEl.textContent = "0.0s";
+
+    // Each horse gets a hidden base pace + stamina profile, randomized fresh each race.
+    // Target: winner unknown in advance, race duration lands 8-13s.
+    const runners = HORSES.map(h=>{
+      return {
+        ...h,
+        pos:0,               // 0..TRACK_LENGTH
+        basePace: 165 + Math.random()*40,     // units per second baseline
+        surge: 0,                              // current burst modifier
+        surgeTimer: 0,
+        legPhase: Math.random()*Math.PI*2,
+        finished:false,
+        finishTime:null,
+      };
+    });
+
+    let startTime = null;
+    let lastTime = null;
+    let finishedOrder = [];
+    let announced = { half:false, stretch:false };
+    let raceOver = false;
+    let dustPool = [];
+
+    function spawnDust(x, y){
+      dustPool.push({
+        x: x + (Math.random()*6-8),
+        y: y + (Math.random()*4-2),
+        r: 2 + Math.random()*2.2,
+        age: 0,
+        life: 0.35 + Math.random()*0.25
+      });
+      if(dustPool.length > 140) dustPool.splice(0, dustPool.length-140);
+    }
+
+    function updateDust(dt){
+      dustPool.forEach(d=>{ d.age += dt; d.y -= 6*dt; });
+      dustPool = dustPool.filter(d=> d.age < d.life);
+    }
+
+    function drawDust(){
+      dustPool.forEach(d=>{
+        const t = d.age/d.life;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(214,199,158,${(1-t)*0.35})`;
+        ctx.arc(d.x, d.y, d.r*(1+t*1.4), 0, Math.PI*2);
+        ctx.fill();
+      });
+    }
+
+    function drawTrack(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // turf base
+      const grd = ctx.createLinearGradient(0,0,0,canvas.height);
+      grd.addColorStop(0,"#124a37");
+      grd.addColorStop(1,"#0d3a2b");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      // mow stripes
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      for(let x=0; x<canvas.width; x+=64){
+        if((x/64)%2===0) ctx.fillRect(x,0,32,canvas.height);
+      }
+
+      // lane rails
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1;
+      for(let i=1;i<LANES;i++){
+        const y = i*laneHeight;
+        ctx.beginPath();
+        ctx.moveTo(0,y);
+        ctx.lineTo(canvas.width,y);
+        ctx.stroke();
+      }
+
+      // start gate
+      ctx.strokeStyle = "#e4d9b8";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(startX-6,4);
+      ctx.lineTo(startX-6,canvas.height-4);
+      ctx.stroke();
+
+      // finish line (checkered)
+      const checkW = 8, checkH = laneHeight/4;
+      for(let lane=0; lane<LANES; lane++){
+        for(let row=0; row<4; row++){
+          ctx.fillStyle = (row+lane)%2===0 ? "#f1e9d2" : "#1c1710";
+          ctx.fillRect(finishX, lane*laneHeight+row*checkH, checkW, checkH);
+        }
+      }
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.font = "bold 11px 'Space Mono', monospace";
+      ctx.save();
+      ctx.translate(finishX+22, canvas.height/2);
+      ctx.rotate(Math.PI/2);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#f1e9d2";
+      ctx.fillText("FINISH", 0, 0);
+      ctx.restore();
+    }
+
+    function shade(hex, amt){
+      // amt: -1..1, darken or lighten a hex color
+      const n = parseInt(hex.slice(1),16);
+      let r2 = (n>>16)+Math.round(255*amt);
+      let g2 = ((n>>8)&0xff)+Math.round(255*amt);
+      let b2 = (n&0xff)+Math.round(255*amt);
+      r2=Math.max(0,Math.min(255,r2)); g2=Math.max(0,Math.min(255,g2)); b2=Math.max(0,Math.min(255,b2));
+      return `rgb(${r2},${g2},${b2})`;
+    }
+
+    // Foot travels a "D"-shaped path each stride: swept forward through the air (swing),
+    // then drags back at ground level at constant height (stance) — the core of a believable gait.
+    function footPath(phase, stride, lift){
+      const t = ((phase % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+      if(t < Math.PI){
+        return { fwd: -stride*Math.cos(t), lift: lift*Math.sin(t) };
+      } else {
+        const u = t - Math.PI;
+        return { fwd: stride*Math.cos(u), lift: 0 };
+      }
+    }
+
+    function drawLeg(hipX, hipY, phase, stride, lift, legLen, color, isNear, spawnAt){
+      const f = footPath(phase, stride, lift);
+      const hoofX = hipX + f.fwd;
+      const hoofY = hipY + legLen - f.lift;
+      const kneeX = hipX + f.fwd*0.45 + (f.lift>0.5 ? 1.5 : -1);
+      const kneeY = hipY + legLen*0.5 - f.lift*0.35;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = isNear ? 4.4 : 3.8;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(kneeX, kneeY);
+      ctx.lineTo(hoofX, hoofY);
+      ctx.stroke();
+
+      // hoof
+      ctx.fillStyle = "#2a2320";
+      ctx.beginPath();
+      ctx.ellipse(hoofX, hoofY, 2.6, 1.8, 0.15, 0, Math.PI*2);
+      ctx.fill();
+
+      // dust kicked up when the hoof is planted near the ground (stance, near lift=0)
+      if(spawnAt && f.lift < 0.4 && Math.random() < 0.22){
+        spawnAt(hoofX, hoofY);
+      }
+    }
+
+    function drawHorse(r, laneIndex, spawnDustFn){
+      const y = laneIndex*laneHeight + laneHeight/2 + 8;
+      const progress = Math.min(r.pos / TRACK_LENGTH, 1);
+      const x = startX + progress*runPixels;
+      const bob = Math.abs(Math.sin(r.legPhase)) * -4;
+      const S = 1.95; // overall scale-up factor for bigger horses
+
+      const worldSpawn = (lx, ly) => spawnDustFn(x + lx*S, y + bob*S + ly*S);
+
+      ctx.save();
+      ctx.translate(x, y+bob);
+      ctx.scale(S, S);
+
+      // ground shadow (elongates slightly with stride)
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.beginPath();
+      ctx.ellipse(-2, 18, 27, 5.5, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      const darker = shade(r.color, -0.3);
+      const lighter = shade(r.color, 0.16);
+
+      const hindHipX=-15, hindHipY=-3, frontHipX=15, frontHipY=-5, legLen=19;
+      const stride=11, lift=7;
+
+      // far-side legs first (rendered behind the barrel), offset half a stride from near legs
+      drawLeg(hindHipX, hindHipY, r.legPhase+Math.PI, stride, lift, legLen, darker, false, null);
+      drawLeg(frontHipX, frontHipY, r.legPhase+Math.PI*1.55, stride, lift, legLen, darker, false, null);
+
+      // tail — flows opposite the direction of travel, flicks with stride
+      ctx.fillStyle = darker;
+      ctx.beginPath();
+      ctx.moveTo(-22,-6);
+      ctx.quadraticCurveTo(-38, -3 + Math.sin(r.legPhase*0.8)*6, -32, 12);
+      ctx.quadraticCurveTo(-26, 3, -20, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      // near-side (front, visible) legs — these spawn the dust
+      drawLeg(hindHipX, hindHipY, r.legPhase, stride, lift, legLen, r.color, true, worldSpawn);
+      drawLeg(frontHipX, frontHipY, r.legPhase+Math.PI*0.55, stride, lift, legLen, r.color, true, worldSpawn);
+
+      // body barrel with gradient for muscular roundness
+      const bodyGrd = ctx.createLinearGradient(0,-11,0,10);
+      bodyGrd.addColorStop(0, lighter);
+      bodyGrd.addColorStop(0.55, r.color);
+      bodyGrd.addColorStop(1, darker);
+      ctx.fillStyle = bodyGrd;
+      ctx.beginPath();
+      ctx.ellipse(-2, 0, 25, 12.5, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      // chest
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.ellipse(17, 0, 8, 9.5, 0.2, 0, Math.PI*2);
+      ctx.fill();
+
+      // neck (with crest highlight)
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.moveTo(11,-9);
+      ctx.quadraticCurveTo(21,-24, 31,-17);
+      ctx.quadraticCurveTo(25,-4, 19,2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = lighter;
+      ctx.beginPath();
+      ctx.moveTo(14,-11); ctx.quadraticCurveTo(22,-21,29,-16);
+      ctx.quadraticCurveTo(22,-13,16,-8); ctx.closePath(); ctx.fill();
+
+      // head
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.moveTo(28,-19);
+      ctx.quadraticCurveTo(42,-23, 44,-10);
+      ctx.quadraticCurveTo(40,-3, 31,-6);
+      ctx.quadraticCurveTo(26,-13,28,-19);
+      ctx.closePath();
+      ctx.fill();
+      // muzzle
+      ctx.fillStyle = shade(r.color,-0.38);
+      ctx.beginPath(); ctx.ellipse(40,-8,4.2,3.2,0.3,0,Math.PI*2); ctx.fill();
+      // nostril
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath(); ctx.ellipse(41,-8,1.1,0.8,0.3,0,Math.PI*2); ctx.fill();
+      // eye
+      ctx.fillStyle = "#1b120a";
+      ctx.beginPath(); ctx.arc(32,-15,1.4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.beginPath(); ctx.arc(32.5,-15.5,0.5,0,Math.PI*2); ctx.fill();
+      // ear
+      ctx.fillStyle = r.color;
+      ctx.beginPath();
+      ctx.moveTo(27,-20); ctx.lineTo(30,-29); ctx.lineTo(34,-20); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = shade(r.color,-0.2);
+      ctx.beginPath();
+      ctx.moveTo(28.5,-21); ctx.lineTo(30,-27); ctx.lineTo(32,-21); ctx.closePath(); ctx.fill();
+
+      // mane, drawn as a few flowing strands
+      ctx.strokeStyle = darker;
+      ctx.lineCap = "round";
+      for(let i=0;i<4;i++){
+        const t0 = i/3;
+        ctx.lineWidth = 3.4 - t0;
+        ctx.beginPath();
+        ctx.moveTo(10 + t0*10, -9 - t0*4);
+        ctx.quadraticCurveTo(16 + t0*8, -20 - t0*2 + Math.sin(r.legPhase+i)*1.5, 25 + t0*3, -18 - t0*1.5);
+        ctx.stroke();
+      }
+
+      // saddle cloth + jockey silks
+      ctx.fillStyle = r.jersey;
+      ctx.fillRect(-10,-20,17,16);
+      if(r.jerseyPattern === "stripe"){
+        ctx.fillStyle = r.color;
+        ctx.fillRect(-10,-20,17,4.8);
+        ctx.fillRect(-10,-5.8,17,4.8);
+      } else if(r.jerseyPattern === "dots"){
+        ctx.fillStyle = r.color;
+        [[-4,-15],[3,-12],[-2,-8],[5,-17]].forEach(([dx,dy])=>{
+          ctx.beginPath(); ctx.arc(dx,dy,1.9,0,Math.PI*2); ctx.fill();
+        });
+      }
+      // silk trim
+      ctx.strokeStyle = shade(r.jersey, r.jersey==="#1c1710"?0.3:-0.2);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-10,-20,17,16);
+
+      // jockey sleeve + arm forward to the reins
+      ctx.strokeStyle = r.jersey;
+      ctx.lineWidth = 3.6;
+      ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(4,-15); ctx.lineTo(22,-15); ctx.stroke();
+      ctx.strokeStyle = "#5a4327"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(22,-15); ctx.lineTo(34,-13); ctx.stroke();
+      // whip
+      ctx.strokeStyle = "#3a2c1a"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(4,-15); ctx.lineTo(-2,-24); ctx.stroke();
+
+      // jodhpurs (lower leg of jockey) + boot
+      ctx.fillStyle = "#efe8d6";
+      ctx.fillRect(-4,-6,6,7);
+      ctx.fillStyle = "#241d14";
+      ctx.fillRect(-4,-1,6,4);
+
+      // jockey torso already drawn as saddle-cloth rect above; head + helmet:
+      ctx.fillStyle = "#dba374";
+      ctx.beginPath(); ctx.arc(-2,-25,4.7,0,Math.PI*2); ctx.fill();
+      // helmet dome
+      ctx.fillStyle = r.color;
+      ctx.beginPath(); ctx.arc(-2,-27.5,5,Math.PI,Math.PI*2); ctx.fill();
+      // helmet brim
+      ctx.fillStyle = darker;
+      ctx.beginPath(); ctx.ellipse(-2,-22.5,5.4,1.6,0,0,Math.PI*2); ctx.fill();
+      // goggle strap
+      ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-6.5,-25.5); ctx.lineTo(2.5,-25.5); ctx.stroke();
+      // silk cap peak
+      ctx.fillStyle = r.color;
+      ctx.beginPath(); ctx.moveTo(-2,-32.4); ctx.lineTo(3.5,-31.2); ctx.lineTo(-2,-30); ctx.closePath(); ctx.fill();
+
+      // numbered saddle cloth badge
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(-1,4,8.5,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = r.color; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = "#1c1710";
+      ctx.font = "bold 9px 'Space Mono', monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(r.num, -1, 4.5);
+
+      ctx.restore();
+
+      // horse name label above the runner
+      ctx.fillStyle = "rgba(241,233,210,0.92)";
+      ctx.font = "bold 12px 'Inter', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(r.name, x, y - laneHeight/2 + 14);
+    }
+
+    function frame(ts){
+      if(!startTime){ startTime = ts; lastTime = ts; }
+      const dt = Math.min((ts - lastTime)/1000, 0.05);
+      lastTime = ts;
+      const elapsed = (ts - startTime)/1000;
+      clockEl.textContent = elapsed.toFixed(1) + "s";
+
+      let leader = null;
+
+      runners.forEach(r=>{
+        if(r.finished) return;
+        // surge dynamics: occasionally kick or fade, creates unpredictable racing
+        r.surgeTimer -= dt;
+        if(r.surgeTimer <= 0){
+          r.surge = (Math.random()-0.45) * 70; // can be negative (fade) or positive (kick)
+          r.surgeTimer = 0.5 + Math.random()*0.9;
+        }
+        const speed = Math.max(60, r.basePace + r.surge);
+        r.pos += speed * dt;
+        r.legPhase += dt * (speed/18);
+
+        if(r.pos >= TRACK_LENGTH && !r.finished){
+          r.finished = true;
+          r.pos = TRACK_LENGTH;
+          r.finishTime = elapsed;
+          finishedOrder.push(r);
+        }
+        if(!leader || r.pos > leader.pos) leader = r;
+      });
+
+      // running commentary
+      if(!announced.half && leader && leader.pos/TRACK_LENGTH >= 0.5){
+        announced.half = true;
+        callBox.textContent = `At the halfway pole, it's ${leader.name} (#${leader.num}) setting the pace.`;
+      }
+      if(!announced.stretch && leader && leader.pos/TRACK_LENGTH >= 0.85){
+        announced.stretch = true;
+        callBox.textContent = `Into the final stretch — ${leader.name} (#${leader.num}) fighting for the lead!`;
+      }
+
+      updateDust(dt);
+      drawTrack();
+      drawDust();
+      runners
+        .slice()
+        .sort((a,b)=>a.num-b.num)
+        .forEach((r, idx)=> drawHorse(r, idx, spawnDust));
+
+      const allDone = runners.every(r=>r.finished);
+      if(!allDone){
+        requestAnimationFrame(frame);
+      } else {
+        raceOver = true;
+        finishedOrder.sort((a,b)=>a.finishTime-b.finishTime);
+        callBox.textContent = `Photo finish confirmed — ${finishedOrder[0].name} (#${finishedOrder[0].num}) takes the win!`;
+        setTimeout(()=> showResult(finishedOrder), 900);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function showResult(order){
+    raceView.style.display = 'none';
+    resultPanel.style.display = 'block';
+
+    const winner = order[0];
+    const margin = order.length > 1 ? (order[1].finishTime - winner.finishTime) : 0;
+
+    document.getElementById('resultFlag').textContent = "PHOTO FINISH CONFIRMED";
+    document.getElementById('resultHeadline').textContent = `${winner.name} wins!`;
+    document.getElementById('resultSub').textContent = margin < 0.15
+      ? `A nose ahead of the field in ${winner.finishTime.toFixed(2)}s — closest finish of the day.`
+      : `Crossed first in ${winner.finishTime.toFixed(2)}s, ${margin.toFixed(2)}s clear of second place.`;
+
+    const list = document.getElementById('finishOrder');
+    list.innerHTML = "";
+    order.forEach((r, i)=>{
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span class="finish-pos">${i+1}</span>
+        <span class="entry-swatch" style="width:24px;height:24px;background:${r.color}">
+          <span class="entry-num" style="font-size:10px">${r.num}</span>
+        </span>
+        <span style="font-weight:${i===0?700:500}">${r.name}</span>
+        <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:11px;color:#5a5040">${r.finishTime.toFixed(2)}s</span>
+      `;
+      li.style.display = 'flex';
+      li.style.alignItems = 'center';
+      li.style.gap = '10px';
+      list.appendChild(li);
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>
