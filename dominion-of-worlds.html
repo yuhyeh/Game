@@ -101,9 +101,8 @@ h1,h2,h3{font-family:'Cinzel', serif; letter-spacing:0.02em; margin:0;}
 .hud-turn .actions{font-family:'Cinzel',serif; font-size:20px; color:var(--gold-bright); margin-top:4px;}
 
 .planets{
-  display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:26px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:26px;
 }
-@media(max-width:760px){.planets{grid-template-columns:1fr;}}
 
 .planet-card{
   background:var(--panel);
@@ -124,6 +123,8 @@ h1,h2,h3{font-family:'Cinzel', serif; letter-spacing:0.02em; margin:0;}
   font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.15em;
   color:var(--dim); text-transform:uppercase; margin-bottom:10px;
 }
+.discovered-tag{color:var(--gold); }
+.terraformed-tag{color:#7fbf6f; }
 .orb{
   border-radius:50%;
   margin-bottom:12px;
@@ -181,7 +182,9 @@ select, button{
   background:var(--panel); color:var(--parchment);
   border:1px solid var(--hairline); border-radius:5px; padding:9px 12px;
 }
-select{min-width:150px;}
+select{min-width:170px;}
+select optgroup{color:var(--gold-bright); font-family:'IBM Plex Mono',monospace; font-style:normal; font-size:11px;}
+select option{color:var(--parchment); font-family:'IBM Plex Sans',sans-serif;}
 button.role-btn{
   cursor:pointer; font-weight:600; letter-spacing:0.02em;
   border:1px solid var(--gold); color:var(--gold-bright); background:transparent;
@@ -247,15 +250,30 @@ const DEFENSE_COST = 3;
 const FLEET_COST = 5;
 const STARFLEET_FLEET_COST = 10;
 const CORPORATION_COST = 100;
+const TERRAFORM_COST = 10;
+const START_PLANET_COUNT = 3;
+const MAX_PLANETS = 5;
+const DISCOVERY_NAMES = ['Vekaris', 'Solmira', 'Kryndor', 'Aetherion'];
 
 function randomSize(){ return SIZE_POOL[Math.floor(Math.random()*SIZE_POOL.length)]; }
 
+// Rolls sizes for the starting worlds, rerolling the whole set if it ever comes up all-Small —
+// an all-S start is too weak/uniform to be interesting, so we guarantee at least one M or L.
+function rollPlanetSizes(count){
+  let sizes;
+  do{
+    sizes = Array.from({length:count}, randomSize);
+  } while(sizes.every(sz => sz === 'S'));
+  return sizes;
+}
+
 const RACES = [
-  {key:'human',      name:'Human Dominion',        bonus:'+1 resource every turn'},
+  {key:'human',      name:'Human Dominion',        bonus:'+1 resource every round'},
   {key:'dragonatic', name:'Dragonatic Ascendancy',  bonus:'+1 fleet on every fleet build'},
   {key:'mercurial',  name:'Mercurial Concord',      bonus:'+1 defense on every defense build'},
   {key:'illuminati', name:'Illuminati Order',       bonus:'+1 ambassador on every ambassador sent'},
   {key:'empirical',  name:'Empirical Hegemony',     bonus:'+1 governor on every governor sent'},
+  {key:'cyborgtic',  name:'Cyborgtic Collective',   bonus:'+1 action every turn'},
 ];
 
 function raceMeta(key){ return RACES.find(r=>r.key===key) || RACES[0]; }
@@ -279,6 +297,8 @@ function raceBonusCount(player, raceKey){
   return count;
 }
 
+function baseActionsFor(player){ return 3 + raceBonusCount(player,'cyborgtic'); }
+
 function emptyCountMap(){ return {1:0, 2:0, 3:0}; }
 
 function makePlanet(id, name, size){
@@ -295,6 +315,8 @@ function makePlanet(id, name, size){
     ambassadors: emptyCountMap(),
     governors: emptyCountMap(),
     defense:0,
+    discovered:false,
+    terraformed:false,
     seed: Math.floor(Math.random()*1e9),
   };
 }
@@ -309,7 +331,7 @@ function shuffle(arr){
 }
 
 function freshState(){
-  const races = shuffle(pickNDistinctRaces(3)); // shuffled again so race identity is fully decoupled from player slot/role
+  const races = shuffle(pickNDistinctRaces(3));
   const turnOrder = shuffle([1,2,3]);
   const players = {
     1:{name:'You',         isBot:false, resources:5, fleet:0, starFleet:0, race:races[0].key, corporationRace:null},
@@ -320,21 +342,24 @@ function freshState(){
     const rm = raceMeta(players[id].race);
     return `${players[id].name} is the ${rm.name} (${rm.bonus})`;
   }).join('. ');
+  const sizes = rollPlanetSizes(START_PLANET_COUNT);
+  const startPlayer = turnOrder[0];
   return {
     planets:[
-      makePlanet('emb','Emberos', randomSize()),
-      makePlanet('the','Thessaly', randomSize()),
-      makePlanet('dra','Draconis Majoris', randomSize()),
+      makePlanet('emb','Emberos', sizes[0]),
+      makePlanet('the','Thessaly', sizes[1]),
+      makePlanet('dra','Draconis Majoris', sizes[2]),
     ],
     players,
     turnOrder,
     turnIndex:0,
-    currentPlayer: turnOrder[0],
-    actionsLeft:3,
+    currentPlayer: startPlayer,
+    actionsLeft: baseActionsFor(players[startPlayer]),
     round:1,
+    totalTurns:0,
     log:[
-      {tag:'START', text:'Three powers eye three unclaimed, randomly-sized worlds. No two bots ever coordinate \u2014 each acts purely in its own interest.'},
-      {tag:'RACE', text: raceLines + '. Race assignment is fully random and independent of who is human or bot \u2014 the human player is just as likely to draw any of the 5 races as either bot.'},
+      {tag:'START', text:`Three powers eye ${START_PLANET_COUNT} unclaimed, randomly-sized worlds. Up to ${MAX_PLANETS-START_PLANET_COUNT} more may be found later by Star Fleet discovery. No two bots ever coordinate \u2014 each acts purely in its own interest.`},
+      {tag:'RACE', text: raceLines + '. Race assignment is fully random and independent of who is human or bot.'},
       {tag:'TURN ORDER', text: `Turn order this game: ${turnOrder.map(id=>players[id].name).join(' \u2192 ')}.`},
     ],
     winner:null,
@@ -358,6 +383,7 @@ function applyAction(state, playerId, role, planetId){
     if(!planet){ message = 'Invalid target world.'; }
     else if(player.resources < 1){ message = `${player.name} lacks resources to hire an explorer.`; }
     else if(planet.status !== 'New'){ message = `${planet.name} is not open for colonization.`; }
+    else if(planet.defense > 0){ message = `${planet.name} is overrun and still defended (${planet.defense}/${DEFENSE_MAX}) \u2014 clear it with fleet before any explorer can land.`; }
     else{
       player.resources -= 1;
       planet.explorers[playerId] += 1;
@@ -401,6 +427,7 @@ function applyAction(state, playerId, role, planetId){
     if(!planet){ message = 'Invalid target world.'; }
     else if(player.resources < 1){ message = `${player.name} lacks resources to hire a governor.`; }
     else if(planet.status !== 'Neutral'){ message = `${planet.name} has no unrest to resolve.`; }
+    else if(planet.defense > 0){ message = `${planet.name} is a warzone and still defended (${planet.defense}/${DEFENSE_MAX}) \u2014 clear it with fleet before any governor can land.`; }
     else{
       player.resources -= 1;
       const bonus = raceBonusCount(player,'empirical');
@@ -431,6 +458,19 @@ function applyAction(state, playerId, role, planetId){
       message = `${player.name} builds a defense facility on ${planet.name}${bonus?` (+${bonus} Mercurial bonus)`:''} (${planet.defense}/${DEFENSE_MAX}).`;
     }
   }
+  else if(role==='terraform'){
+    if(!planet){ message = 'Invalid target world.'; }
+    else if(planet.status !== 'Colonized' || planet.owner !== playerId){ message = `${player.name} can only terraform a world they govern.`; }
+    else if(planet.terraformed){ message = `${planet.name} has already been terraformed \u2014 each world can only be terraformed once.`; }
+    else if(player.resources < TERRAFORM_COST){ message = `${player.name} needs ${TERRAFORM_COST} resources to terraform ${planet.name}.`; }
+    else{
+      player.resources -= TERRAFORM_COST;
+      planet.terraformed = true;
+      planet.resourceYield += 1;
+      ok = true;
+      message = `${player.name} terraforms ${planet.name}, permanently boosting its yield to ${planet.resourceYield} resources/round.`;
+    }
+  }
   else if(role==='fleet'){
     if(player.fleet >= FLEET_MAX){ message = `${player.name} already commands the maximum fleet (${FLEET_MAX}/${FLEET_MAX}).`; }
     else if(player.resources < FLEET_COST){ message = `${player.name} needs ${FLEET_COST} resources to commission a fleet.`; }
@@ -445,8 +485,8 @@ function applyAction(state, playerId, role, planetId){
   }
   else if(role==='attack'){
     if(!planet){ message = 'Invalid target world.'; }
-    else if(planet.status !== 'Colonized' || planet.owner === playerId || !planet.owner){ message = `${player.name} can only send fleet against a rival-held world.`; }
-    else if(planet.defense <= 0){ message = `${planet.name} has no defense left to destroy \u2014 send an ambassador instead.`; }
+    else if(planet.owner === playerId){ message = `${player.name} cannot attack their own defenses.`; }
+    else if(planet.defense <= 0){ message = `${planet.name} has no defense left to destroy \u2014 try colonizing, contesting, or reclaiming it instead.`; }
     else if(player.fleet <= 0){ message = `${player.name} has no fleet available to attack.`; }
     else{
       player.fleet -= 1;
@@ -454,7 +494,7 @@ function applyAction(state, playerId, role, planetId){
       ok = true;
       message = `${player.name} sends a fleet against ${planet.name}, canceling one defense facility (${planet.defense}/${DEFENSE_MAX} remaining).`;
       if(planet.defense === 0){
-        message += ` ${planet.name}'s defenses are down \u2014 ambassadors can now land.`;
+        message += ` ${planet.name} is clear \u2014 it can now be colonized, contested, or reclaimed.`;
       }
     }
   }
@@ -470,17 +510,36 @@ function applyAction(state, playerId, role, planetId){
   else if(role==='starfleet_attack'){
     if(!planet){ message = 'Invalid target world.'; }
     else if(player.starFleet <= 0){ message = `${player.name} has no Star Fleet ready.`; }
-    else if(planet.status !== 'Colonized' || planet.owner === playerId || !planet.owner){ message = `Star Fleet can only strike a rival-held, Colonized world.`; }
+    else if(planet.owner === playerId || !(planet.status==='Colonized' || planet.defense>0)){ message = `Star Fleet can only strike a rival-held world, or purge a crisis-stricken world (zombie outbreak / civil war).`; }
     else{
       player.starFleet -= 1;
       planet.owner = playerId;
+      planet.status = 'Colonized';
       planet.explorers = emptyCountMap();
       planet.ambassadors = emptyCountMap();
       planet.governors = emptyCountMap();
       planet.defense = 0;
       planet.seed = Math.floor(Math.random()*1e9);
       ok = true;
-      message = `\u2694 ${player.name}'s STAR FLEET obliterates all resistance and instantly conquers ${planet.name}!`;
+      message = `\u2694 ${player.name}'s STAR FLEET obliterates all resistance \u2014 zombies, warlords, or rival garrisons alike \u2014 and instantly claims ${planet.name}!`;
+    }
+  }
+  else if(role==='starfleet_discover'){
+    if(player.starFleet <= 0){ message = `${player.name} has no Star Fleet ready to venture beyond the known worlds.`; }
+    else if(s.planets.length >= MAX_PLANETS){ message = `All ${MAX_PLANETS} worlds in this system have already been found \u2014 there is nothing left to discover.`; }
+    else{
+      player.starFleet -= 1;
+      const newSize = randomSize();
+      const nameIdx = s.planets.length - START_PLANET_COUNT;
+      const newName = DISCOVERY_NAMES[nameIdx] || `Uncharted World ${s.planets.length+1}`;
+      const newId = 'disc'+Math.floor(Math.random()*1e9);
+      const planetObj = makePlanet(newId, newName, newSize);
+      planetObj.status = 'Colonized';
+      planetObj.owner = playerId;
+      planetObj.discovered = true;
+      s.planets.push(planetObj);
+      ok = true;
+      message = `${player.name}'s Star Fleet discovers a new world, ${newName} (Size ${newSize}), and claims it on the spot \u2014 no rival could have reached it first.`;
     }
   }
   else if(role==='corporation'){
@@ -531,18 +590,95 @@ function checkWinner(state){
   return null;
 }
 
+// Every 10 individual turns (across all players), there's a 50% chance a random event strikes
+// a random Colonized world. Nothing happens if no world is currently Colonized.
+function maybeTriggerRandomEvent(state){
+  let s = clone(state);
+  if(s.round % 10 !== 0) return s;
+  if(Math.random() >= 0.25) return s;
+
+  const colonized = s.planets.filter(p=>p.status==='Colonized');
+  if(!colonized.length) return s;
+
+  const target = colonized[Math.floor(Math.random()*colonized.length)];
+  const prevOwnerName = target.owner ? s.players[target.owner].name : null;
+  const canMeteor = s.planets.length > 1; // never let an event empty the board entirely
+  const eventPool = canMeteor ? ['zombie','civilwar','meteor'] : ['zombie','civilwar'];
+  const chosen = eventPool[Math.floor(Math.random()*eventPool.length)];
+
+  if(chosen==='zombie'){
+    target.status = 'New';
+    target.owner = null;
+    target.explorers = emptyCountMap();
+    target.ambassadors = emptyCountMap();
+    target.governors = emptyCountMap();
+    target.defense = DEFENSE_MAX;
+    target.seed = Math.floor(Math.random()*1e9);
+    s.log = [{tag:'EVENT', text:`\u2620 ZOMBIE OUTBREAK on ${target.name}!${prevOwnerName?` ${prevOwnerName}'s colony has fallen \u2014`:''} the world reverts to uncolonized with ${DEFENSE_MAX}/${DEFENSE_MAX} defense. Fleet must clear the infestation before any explorer can land.`}, ...s.log].slice(0,100);
+  }
+  else if(chosen==='civilwar'){
+    target.status = 'Neutral';
+    target.owner = null;
+    target.explorers = emptyCountMap();
+    target.ambassadors = emptyCountMap();
+    target.governors = emptyCountMap();
+    target.defense = DEFENSE_MAX;
+    s.log = [{tag:'EVENT', text:`\u2694 CIVIL WAR erupts on ${target.name}!${prevOwnerName?` ${prevOwnerName}'s hold collapses \u2014`:''} the world turns Neutral, entrenched with ${DEFENSE_MAX}/${DEFENSE_MAX} defense. Fleet must clear the warlords before governors can land.`}, ...s.log].slice(0,100);
+  }
+  else if(chosen==='meteor'){
+    s.planets = s.planets.filter(p=>p.id!==target.id);
+    s.log = [{tag:'EVENT', text:`\u2604 METEOR STORM annihilates ${target.name}${prevOwnerName?`, ${prevOwnerName}'s colony`:''} \u2014 the world is destroyed and removed from the dominion forever.`}, ...s.log].slice(0,100);
+  }
+  return s;
+}
+
 function pickBotAction(state, selfId){
   const s = state;
   const self = s.players[selfId];
   const rivals = rivalsOf(selfId);
 
-  const rivalColonized = s.planets.filter(p=>p.status==='Colonized' && rivals.includes(p.owner));
-  if(self.starFleet > 0 && rivalColonized.length){
-    const targets = [...rivalColonized].sort((a,b)=> b.proportion - a.proportion);
+  // Star Fleet can strike a rival-held world OR instantly purge a crisis world (defense>0, no matter who — if anyone — owns it)
+  const starfleetTargets = s.planets.filter(p=> p.owner!==selfId && (p.status==='Colonized' || p.defense>0));
+  if(self.starFleet > 0 && starfleetTargets.length){
+    const targets = [...starfleetTargets].sort((a,b)=> b.proportion - a.proportion);
     return {role:'starfleet_attack', planetId:targets[0].id};
   }
+  // No target worth striking right now — put a ready Star Fleet to work discovering new territory instead
+  if(self.starFleet > 0 && starfleetTargets.length===0 && s.planets.length < MAX_PLANETS){
+    return {role:'starfleet_discover', planetId:s.planets[0].id};
+  }
 
-  const neutrals = s.planets.filter(p=>p.status==='Neutral');
+  const ownedBySelf = s.planets.filter(p=>p.owner===selfId).length;
+  const isMatchPoint = ownedBySelf === s.planets.length - 1;
+  if(isMatchPoint){
+    const lastWorld = s.planets.find(p=>p.owner !== selfId);
+    if(lastWorld && lastWorld.status==='Colonized'){
+      const dragonBonus = raceBonusCount(self,'dragonatic');
+      const fleetStillNeeded = Math.max(0, STARFLEET_FLEET_COST - self.fleet);
+      const fleetBuildsNeeded = Math.ceil(fleetStillNeeded / (1+dragonBonus));
+      const defenseClearBuildsNeeded = Math.max(0, lastWorld.defense - self.fleet);
+      const starRouteCost = (fleetBuildsNeeded + Math.max(0,defenseClearBuildsNeeded)) * FLEET_COST;
+
+      const ambRemaining = Math.max(0, lastWorld.ambassadorsReq - lastWorld.ambassadors[selfId]);
+      const ambRouteCost = lastWorld.defense>0 ? Infinity : (ambRemaining + lastWorld.governorsReq);
+
+      if(lastWorld.defense > 0 && self.fleet > 0){
+        return {role:'attack', planetId:lastWorld.id};
+      }
+      if(self.fleet >= STARFLEET_FLEET_COST){
+        return {role:'starfleet_upgrade', planetId:s.planets[0].id};
+      }
+      if(starRouteCost <= ambRouteCost && self.resources >= FLEET_COST){
+        return {role:'fleet', planetId:s.planets[0].id};
+      }
+      if(lastWorld.defense === 0 && self.resources >= 1){
+        return {role:'ambassador', planetId:lastWorld.id};
+      }
+    }
+  }
+
+  // Neutral worlds ready to be reclaimed by governor (civil-war Neutrals must be cleared of defense first — see below)
+  const neutrals = s.planets.filter(p=>p.status==='Neutral' && p.defense===0);
   if(neutrals.length && self.resources >= 1){
     const sorted = [...neutrals].sort((a,b)=> (b.governors[selfId]-a.governors[selfId]) || (b.proportion-a.proportion));
     return {role:'governor', planetId:sorted[0].id};
@@ -552,9 +688,10 @@ function pickBotAction(state, selfId){
     return {role:'starfleet_upgrade', planetId:s.planets[0].id};
   }
 
-  const defendedRivals = s.planets.filter(p=>p.status==='Colonized' && rivals.includes(p.owner) && p.defense>0);
-  if(defendedRivals.length && self.fleet > 0){
-    const sorted = [...defendedRivals].sort((a,b)=> a.defense - b.defense);
+  // Any defended target worth clearing with fleet: rival-held worlds, or ownerless zombie/civil-war crisis worlds
+  const attackable = s.planets.filter(p=> p.owner!==selfId && p.defense>0);
+  if(attackable.length && self.fleet > 0){
+    const sorted = [...attackable].sort((a,b)=> a.defense - b.defense);
     return {role:'attack', planetId:sorted[0].id};
   }
 
@@ -564,11 +701,12 @@ function pickBotAction(state, selfId){
     return {role:'ambassador', planetId:sorted[0].id};
   }
 
-  if(defendedRivals.length && self.resources >= FLEET_COST && self.fleet < FLEET_MAX){
+  if(attackable.length && self.resources >= FLEET_COST && self.fleet < FLEET_MAX){
     return {role:'fleet', planetId:s.planets[0].id};
   }
 
-  const open = s.planets.filter(p=>p.status==='New');
+  // Open worlds ready for explorers (zombie-outbreak worlds must be cleared of defense first — see above)
+  const open = s.planets.filter(p=>p.status==='New' && p.defense===0);
   if(open.length && self.resources >= 1){
     const sorted = [...open].sort((a,b)=> ((a.explorersReq-a.explorers[selfId]) - (b.explorersReq-b.explorers[selfId])) || (b.proportion-a.proportion));
     return {role:'explorer', planetId:sorted[0].id};
@@ -576,6 +714,12 @@ function pickBotAction(state, selfId){
 
   if(!self.corporationRace && self.resources >= CORPORATION_COST){
     return {role:'corporation', planetId:s.planets[0].id};
+  }
+
+  const terraformCandidates = s.planets.filter(p=>p.status==='Colonized' && p.owner===selfId && !p.terraformed);
+  if(terraformCandidates.length && self.resources >= TERRAFORM_COST){
+    const sorted = [...terraformCandidates].sort((a,b)=> b.proportion - a.proportion);
+    return {role:'terraform', planetId:sorted[0].id};
   }
 
   const ownWorlds = s.planets.filter(p=>p.status==='Colonized' && p.owner===selfId && p.defense < DEFENSE_MAX);
@@ -602,6 +746,9 @@ function mulberry32(seed){
 }
 
 function planetPalette(planet){
+  if(planet.status==='New' && planet.defense>0){
+    return { base:'#1c2416', blobs:['#3a4a1f','#4f5c28','#6b7a35','#22301a'], ice:false, clouds:'rgba(150,200,80,0.12)' };
+  }
   if(planet.status==='Colonized' && planet.owner===1){
     return { base:'#0f3d5e', blobs:['#3f6b3f','#527d4a','#2f5230','#6b8f52'], ice:true, clouds:'rgba(255,255,255,0.10)' };
   }
@@ -670,6 +817,77 @@ function drawPlanet(canvas, planet){
   ctx.restore();
 }
 
+// --- Dropdown role options: filtered by the selected planet's status/ownership, grouped via optgroup ---
+const GROUP_ORDER = ['Colonize','Contest & Reclaim','Development','Military','Player Actions'];
+
+function planetSpecificRoleOptions(planet){
+  const opts = [];
+  if(!planet) return opts;
+  if(planet.status==='New'){
+    if(planet.defense>0){
+      opts.push({value:'attack', label:'Attack \u2014 clear the zombie outbreak\u2019s defense (1 fleet)', group:'Military'});
+      opts.push({value:'starfleet_attack', label:'Star Fleet Strike \u2014 instantly purge and claim this world (1 star fleet)', group:'Military'});
+    } else {
+      opts.push({value:'explorer', label:'Explorer \u2014 colonize this world (1 resource)', group:'Colonize'});
+    }
+  }
+  if(planet.status==='Colonized' && planet.owner===1){
+    opts.push({value:'defense', label:'Defense \u2014 fortify this world (3 resources, max 5)', group:'Military'});
+    if(!planet.terraformed){
+      opts.push({value:'terraform', label:`Terraform \u2014 permanently +1 yield (${TERRAFORM_COST} resources, once per world)`, group:'Development'});
+    }
+  }
+  if(planet.status==='Colonized' && planet.owner!==1){
+    if(planet.defense===0){
+      opts.push({value:'ambassador', label:'Ambassador \u2014 contest this world (1 resource)', group:'Contest & Reclaim'});
+    }
+    opts.push({value:'attack', label:'Attack \u2014 send fleet vs this world\u2019s defense (1 fleet)', group:'Military'});
+    opts.push({value:'starfleet_attack', label:'Star Fleet Strike \u2014 instantly conquer this world (1 star fleet)', group:'Military'});
+  }
+  if(planet.status==='Neutral'){
+    if(planet.defense>0){
+      opts.push({value:'attack', label:'Attack \u2014 clear the civil war\u2019s defense (1 fleet)', group:'Military'});
+      opts.push({value:'starfleet_attack', label:'Star Fleet Strike \u2014 instantly quash the war and claim this world (1 star fleet)', group:'Military'});
+    } else {
+      opts.push({value:'governor', label:'Governor \u2014 reclaim this world (1 resource)', group:'Contest & Reclaim'});
+    }
+  }
+  return opts;
+}
+
+function playerLevelRoleOptions(state){
+  const opts = [
+    {value:'fleet', label:`Fleet \u2014 commission a warship (${FLEET_COST} resources, max ${FLEET_MAX})`, group:'Player Actions'},
+    {value:'starfleet_upgrade', label:`Star Fleet Upgrade \u2014 fuse ${STARFLEET_FLEET_COST} fleet into 1 Star Fleet`, group:'Player Actions'},
+  ];
+  if(state.planets.length < MAX_PLANETS){
+    opts.push({value:'starfleet_discover', label:`Star Fleet Discovery \u2014 find a new world (1 star fleet, max ${MAX_PLANETS} worlds total)`, group:'Player Actions'});
+  }
+  opts.push({value:'corporation', label:`Corporation \u2014 hire another race's ability (${CORPORATION_COST} resources, one-time)`, group:'Player Actions'});
+  return opts;
+}
+
+function buildRoleSelectMarkup(state, planet, preferredValue){
+  const opts = [...planetSpecificRoleOptions(planet), ...playerLevelRoleOptions(state)];
+  const values = opts.map(o=>o.value);
+  const selectedValue = (preferredValue && values.includes(preferredValue)) ? preferredValue : values[0];
+  let html = '';
+  GROUP_ORDER.forEach(group=>{
+    const groupOpts = opts.filter(o=>o.group===group);
+    if(!groupOpts.length) return;
+    html += `<optgroup label="${group}">`;
+    groupOpts.forEach(o=>{
+      html += `<option value="${o.value}" ${o.value===selectedValue?'selected':''}>${o.label}</option>`;
+    });
+    html += `</optgroup>`;
+  });
+  return {html, selectedValue};
+}
+
+// --- Render ---
+let uiSelectedPlanetId = null;
+let uiSelectedRole = null;
+
 function render(state){
   const app = document.getElementById('app');
   app.innerHTML = '';
@@ -680,7 +898,7 @@ function render(state){
     <div class="header">
       <div>
         <h1>Dominion of Worlds</h1>
-        <div class="sub">Planetary exploration \u00b7 colonization \u00b7 conquest \u00b7 corporations</div>
+        <div class="sub">Planetary exploration \u00b7 colonization \u00b7 conquest \u00b7 corporations \u00b7 discovery</div>
       </div>
       <div class="eyebrow">Round ${state.round}</div>
     </div>
@@ -699,7 +917,7 @@ function render(state){
     wrap.innerHTML += `
       <div class="winner-banner">
         <h2>${state.players[state.winner].name} rules the dominion.</h2>
-        <p>All three worlds answer to one power.</p>
+        <p>All active worlds answer to one power.</p>
       </div>
     `;
   }
@@ -710,17 +928,20 @@ function render(state){
     rulesBox.innerHTML = `
       <h3>Players</h3>
       <div class="rule-block">Three powers compete: you (human) and two independent bots. The two bots never collaborate, share information, or specifically gang up on the human \u2014 each bot picks the best available target purely by its own criteria, whether that target is you or the other bot.</div>
+      <div class="rule-block">When a bot is one world away from winning, it recognizes the opportunity and commits to whichever route \u2014 an ambassador/governor contest, or rushing fleet into a Star Fleet strike \u2014 is cheaper and more reliable, rather than drifting into unrelated spending.</div>
 
       <h3>Worlds</h3>
-      <div class="rule-block">Three worlds are randomly sized each game as Small, Medium, or Large (proportion \u00d71 / \u00d72 / \u00d74). Sizing scales every requirement and every yield below.</div>
+      <div class="rule-block">The game starts with ${START_PLANET_COUNT} worlds, randomly sized as Small, Medium, or Large (proportion \u00d71 / \u00d72 / \u00d74) \u2014 the start is never all-Small, guaranteeing at least one Medium or Large world. Sizing scales every requirement and yield below.</div>
+      <div class="rule-block">Up to ${MAX_PLANETS} worlds can exist in total. The extra ${MAX_PLANETS-START_PLANET_COUNT} slots only open up through Star Fleet discovery (see below) \u2014 they don't exist, and can't be raced for, until someone finds them.</div>
 
       <h3>Turn Order &amp; Races</h3>
-      <div class="rule-block">Turn order among all three players is randomized every game. Each player is also randomly assigned one of 5 races (no two players share the same primary race) \u2014 the human-controlled player has no special link to the Human Dominion race and is just as likely to draw any of the 5. Each race carries a standing advantage:</div>
+      <div class="rule-block">Turn order among all three players is randomized every game. Each player is also randomly assigned one of 6 races (no two players share the same primary race) \u2014 the human-controlled player has no special link to any particular race. Each race carries a standing advantage:</div>
       <div class="rule-block">\u2022 <b>Human Dominion</b> \u2014 +1 resource every round.</div>
       <div class="rule-block">\u2022 <b>Dragonatic Ascendancy</b> \u2014 +1 extra fleet whenever fleet is built.</div>
       <div class="rule-block">\u2022 <b>Mercurial Concord</b> \u2014 +1 extra defense whenever a defense facility is built.</div>
       <div class="rule-block">\u2022 <b>Illuminati Order</b> \u2014 +1 extra ambassador progress whenever an ambassador is sent.</div>
       <div class="rule-block">\u2022 <b>Empirical Hegemony</b> \u2014 +1 extra governor progress whenever a governor is sent.</div>
+      <div class="rule-block">\u2022 <b>Cyborgtic Collective</b> \u2014 +1 extra action every turn (4 actions instead of 3).</div>
 
       <h3>Corporations</h3>
       <div class="rule-block">Any player may establish 1 Corporation for ${CORPORATION_COST} resources \u2014 a one-time investment. A corporation employs a randomly chosen race's ability in addition to the player's own, and abilities stack. If the corporation happens to employ the same race as the player's own, that ability's bonus doubles.</div>
@@ -729,11 +950,14 @@ function render(state){
       <div class="rule-block"><b>Explorers</b> claim a New (uncolonized) world. Requirement equals the world's proportion: S=1, M=2, L=4 explorers.</div>
 
       <h3>Contest &amp; Reclaim</h3>
-      <div class="rule-block"><b>Ambassadors</b> contest a rival's Colonized world, requirement = proportion+1. Any of the two non-owning players may build ambassador progress independently \u2014 whichever reaches the requirement first throws the world into unrest (Neutral, ownerless).</div>
-      <div class="rule-block"><b>Governors</b> race on a Neutral world (same requirement) \u2014 any of the three players may compete; whichever reaches it first restores the world as Colonized under them.</div>
+      <div class="rule-block"><b>Ambassadors</b> contest a rival's Colonized world, requirement = proportion+1. Any non-owning player may build ambassador progress independently \u2014 whichever reaches the requirement first throws the world into unrest (Neutral, ownerless).</div>
+      <div class="rule-block"><b>Governors</b> race on a Neutral world (same requirement) \u2014 any player may compete; whichever reaches it first restores the world as Colonized under them.</div>
 
       <h3>Defense</h3>
       <div class="rule-block">An owner may fortify their own Colonized world: ${DEFENSE_COST} resources per facility, max ${DEFENSE_MAX} per world. While any defense stands, ambassadors cannot land there.</div>
+
+      <h3>Terraforming</h3>
+      <div class="rule-block">An owner may terraform their own Colonized world for ${TERRAFORM_COST} resources, permanently increasing its yield by +1 resource per round. Each world can only be terraformed once.</div>
 
       <h3>Fleet &amp; Attack</h3>
       <div class="rule-block"><b>Fleet</b> is commissioned at the player level (not tied to any world): ${FLEET_COST} resources each, max ${FLEET_MAX} in reserve.</div>
@@ -742,12 +966,20 @@ function render(state){
       <h3>Star Fleet \u2014 the decisive weapon</h3>
       <div class="rule-block">Once a player amasses ${STARFLEET_FLEET_COST}/${STARFLEET_FLEET_COST} fleet, they may fuse the entire reserve into 1 <b>Star Fleet</b> armada.</div>
       <div class="rule-block">A Star Fleet strike bypasses defense, ambassadors, and governors entirely \u2014 it <b>immediately conquers</b> any rival Colonized world in a single action.</div>
+      <div class="rule-block">A Star Fleet can instead be sent on a <b>Discovery</b> \u2014 finding a brand-new, randomly-sized world (if fewer than ${MAX_PLANETS} exist) and claiming it immediately. No rival can colonize a world before it's been discovered.</div>
 
       <h3>Income</h3>
-      <div class="rule-block">Every player starts with 5 resources. Income is paid once per full round \u2014 that is, after all three players have taken their turn \u2014 rather than after every individual turn: 1 resource base per player (doubled to 2 for Human Dominion), plus resources equal to each Colonized world's size proportion (S=1, M=2, L=4) for its owner.</div>
+      <div class="rule-block">Every player starts with 5 resources. Income is paid once per full round \u2014 after all three players have taken their turn \u2014 rather than after every individual turn: 1 resource base per player (doubled to 2 for Human Dominion), plus resources equal to each Colonized world's size proportion (S=1, M=2, L=4) for its owner.</div>
+
+      <h3>Random Events</h3>
+      <div class="rule-block">Every 10 full rounds (i.e. every 10 times all three players have taken their turn), there's a 25% chance a random Colonized world is struck by one of three events \u2014 nothing happens if no world is currently Colonized:</div>
+      <div class="rule-block">\u2022 <b>Zombie Outbreak</b> \u2014 the world reverts to uncolonized (New) with ${DEFENSE_MAX}/${DEFENSE_MAX} defense entrenched. Fleet must clear the infestation before any explorer can land.</div>
+      <div class="rule-block">\u2022 <b>Civil War</b> \u2014 the world turns Neutral with ${DEFENSE_MAX}/${DEFENSE_MAX} defense entrenched by the warring factions. Fleet must clear it before governors can land.</div>
+      <div class="rule-block">\u2022 <b>Meteor Storm</b> \u2014 the world is destroyed outright and removed from the game forever (this event never fires if only one world remains).</div>
+      <div class="rule-block">A Star Fleet strike can bypass either crisis entirely, instantly purging the zombies or the warlords and claiming the world in one action \u2014 just like conquering a rival.</div>
 
       <h3>Turns &amp; Victory</h3>
-      <div class="rule-block">Each turn grants 3 actions \u2014 you needn't use them all. Own all three worlds to win the dominion.</div>
+      <div class="rule-block">Each turn grants 3 actions (4 for Cyborgtic Collective) \u2014 you needn't use them all. Own every active world on the board to win the dominion.</div>
     `;
     wrap.appendChild(rulesBox);
   }
@@ -793,15 +1025,24 @@ function render(state){
 
       card.className = 'planet-card' + ownerClass;
 
-      let statusLabel = planet.status==='New' ? 'Uncolonized' : planet.status;
+      let statusLabel = planet.status==='New' ? (planet.defense>0 ? 'Zombie Outbreak' : 'Uncolonized') : (planet.status==='Neutral' && planet.defense>0 ? 'Civil War' : planet.status);
       let statusCls = planet.status==='New' ? 'new' : (planet.status==='Neutral' ? 'neutral' : 'owned-'+planet.owner);
 
       let progressHTML = '';
       if(planet.status==='New'){
-        progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
-            <div class="progress-label"><span>${state.players[pid].name}: explorers</span><span>${planet.explorers[pid]}/${planet.explorersReq}</span></div>
-            <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.explorers[pid]/planet.explorersReq*100)}%"></div></div>
-        `).join('') + '</div>';
+        if(planet.defense>0){
+          progressHTML = `
+            <div class="progress-wrap">
+              <div class="progress-label"><span>Zombie defense (blocks explorers)</span><span>${planet.defense}/${DEFENSE_MAX}</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, planet.defense/DEFENSE_MAX*100)}%; background:var(--gold);"></div></div>
+            </div>
+          `;
+        } else {
+          progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
+              <div class="progress-label"><span>${state.players[pid].name}: explorers</span><span>${planet.explorers[pid]}/${planet.explorersReq}</span></div>
+              <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.explorers[pid]/planet.explorersReq*100)}%"></div></div>
+          `).join('') + '</div>';
+        }
       } else if(planet.status==='Colonized'){
         const defenseBlocking = planet.defense > 0;
         const rivals = rivalsOf(planet.owner);
@@ -816,15 +1057,24 @@ function render(state){
           </div>
         `;
       } else if(planet.status==='Neutral'){
-        progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
-            <div class="progress-label"><span>${state.players[pid].name}: governors</span><span>${planet.governors[pid]}/${planet.governorsReq}</span></div>
-            <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.governors[pid]/planet.governorsReq*100)}%"></div></div>
-        `).join('') + '</div>';
+        if(planet.defense>0){
+          progressHTML = `
+            <div class="progress-wrap">
+              <div class="progress-label"><span>Civil war defense (blocks governors)</span><span>${planet.defense}/${DEFENSE_MAX}</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, planet.defense/DEFENSE_MAX*100)}%; background:var(--gold);"></div></div>
+            </div>
+          `;
+        } else {
+          progressHTML = '<div class="progress-wrap">' + PLAYER_IDS.map(pid=>`
+              <div class="progress-label"><span>${state.players[pid].name}: governors</span><span>${planet.governors[pid]}/${planet.governorsReq}</span></div>
+              <div class="progress-bar"><div class="progress-fill ${PLAYER_COLOR[pid]}" style="width:${Math.min(100, planet.governors[pid]/planet.governorsReq*100)}%"></div></div>
+          `).join('') + '</div>';
+        }
       }
 
       card.innerHTML = `
         ${planet.status==='Colonized' ? `<div class="crown">${PLAYER_CROWN[planet.owner]}</div>` : ''}
-        <div class="size-tag">Size ${planet.size} \u00b7 \u00d7${planet.proportion}</div>
+        <div class="size-tag">Size ${planet.size} \u00b7 \u00d7${planet.proportion}${planet.discovered ? ' <span class="discovered-tag">\u00b7 discovered</span>' : ''}${planet.terraformed ? ' <span class="terraformed-tag">\u00b7 terraformed</span>' : ''}</div>
         <div class="orb ${SIZE_META[planet.size].orbClass} ${statusClass}"><canvas id="canvas-${planet.id}" width="200" height="200"></canvas></div>
         <div class="planet-name">${planet.name}</div>
         <div class="planet-status ${statusCls}">${statusLabel}${planet.status==='Colonized' ? ' \u00b7 '+state.players[planet.owner].name : ''}</div>
@@ -840,25 +1090,24 @@ function render(state){
     wrap.appendChild(grid);
 
     if(!state.winner && state.currentPlayer===1 && !state.players[1].isBot){
+      if(!uiSelectedPlanetId || !state.planets.some(p=>p.id===uiSelectedPlanetId)){
+        uiSelectedPlanetId = state.planets[0].id;
+      }
+      const currentPlanet = state.planets.find(p=>p.id===uiSelectedPlanetId);
+      const roleBuild = buildRoleSelectMarkup(state, currentPlanet, uiSelectedRole);
+      uiSelectedRole = roleBuild.selectedValue;
+
       const panel = document.createElement('div');
       panel.className = 'actions-panel';
       panel.innerHTML = `
         <h2>Issue an order</h2>
-        <div class="hint">Choose a role and a world, then deploy. Each order costs 1 action plus its resource/fleet cost.</div>
+        <div class="hint">Pick a target world first \u2014 the action list below only shows what's actually valid there, plus your always-available player-level actions.</div>
         <div class="controls-row">
-          <select id="roleSelect">
-            <option value="explorer">Explorer \u2014 colonize a New world (1 resource)</option>
-            <option value="ambassador">Ambassador \u2014 contest a rival world (1 resource)</option>
-            <option value="governor">Governor \u2014 reclaim a Neutral world (1 resource)</option>
-            <option value="defense">Defense \u2014 fortify your world (3 resources, max 5)</option>
-            <option value="fleet">Fleet \u2014 commission a warship (5 resources, max 10)</option>
-            <option value="attack">Attack \u2014 send fleet vs rival defense (1 fleet)</option>
-            <option value="starfleet_upgrade">Star Fleet Upgrade \u2014 fuse 10 fleet into 1 Star Fleet</option>
-            <option value="starfleet_attack">Star Fleet Strike \u2014 instantly conquer a rival world (1 star fleet)</option>
-            <option value="corporation">Corporation \u2014 hire another race's ability (${CORPORATION_COST} resources, one-time)</option>
-          </select>
           <select id="planetSelect">
-            ${state.planets.map(p=>`<option value="${p.id}">${p.name} (${p.size} \u00b7 ${p.status})</option>`).join('')}
+            ${state.planets.map(p=>`<option value="${p.id}" ${p.id===uiSelectedPlanetId?'selected':''}>${p.name} (${p.size} \u00b7 ${p.status})</option>`).join('')}
+          </select>
+          <select id="roleSelect">
+            ${roleBuild.html}
           </select>
           <button class="role-btn" id="deployBtn" ${state.actionsLeft<=0 ? 'disabled':''}>Deploy</button>
           <button class="end-turn" id="endTurnBtn">End Turn</button>
@@ -906,6 +1155,23 @@ function render(state){
     });
   });
 
+  const planetSelectEl = document.getElementById('planetSelect');
+  if(planetSelectEl){
+    planetSelectEl.addEventListener('change', ()=>{
+      uiSelectedPlanetId = planetSelectEl.value;
+      uiSelectedRole = null; // reset so the newly valid list picks a sensible default
+      const planet = GAME.planets.find(p=>p.id===uiSelectedPlanetId);
+      const roleBuild = buildRoleSelectMarkup(GAME, planet, null);
+      uiSelectedRole = roleBuild.selectedValue;
+      const roleSelectEl = document.getElementById('roleSelect');
+      if(roleSelectEl) roleSelectEl.innerHTML = roleBuild.html;
+    });
+  }
+  const roleSelectEl = document.getElementById('roleSelect');
+  if(roleSelectEl){
+    roleSelectEl.addEventListener('change', ()=>{ uiSelectedRole = roleSelectEl.value; });
+  }
+
   const deployBtn = document.getElementById('deployBtn');
   if(deployBtn){
     deployBtn.addEventListener('click', ()=>{
@@ -921,6 +1187,8 @@ function render(state){
   const restartBtn = document.getElementById('restartBtn');
   if(restartBtn){
     restartBtn.addEventListener('click', ()=>{
+      uiSelectedPlanetId = null;
+      uiSelectedRole = null;
       GAME = freshState();
       render(GAME);
       if(GAME.players[GAME.currentPlayer].isBot){
@@ -956,11 +1224,13 @@ function advanceTurn(){
   let s = clone(GAME);
   s.turnIndex = (s.turnIndex + 1) % s.turnOrder.length;
   s.currentPlayer = s.turnOrder[s.turnIndex];
+  s.totalTurns = (s.totalTurns || 0) + 1;
   if(s.turnIndex === 0){
     s.round += 1;
-    s = collectResources(s); // income (base + planet yields) is paid once per full round, after everyone has played
+    s = collectResources(s);
+    s = maybeTriggerRandomEvent(s);
   }
-  s.actionsLeft = 3;
+  s.actionsLeft = baseActionsFor(s.players[s.currentPlayer]);
   const w = checkWinner(s);
   if(w) s.winner = w;
   GAME = s;
